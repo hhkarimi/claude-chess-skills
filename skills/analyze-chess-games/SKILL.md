@@ -73,18 +73,20 @@ Generate the visual dashboard from `aggregate.json`:
 uv run scripts/render_charts.py [--in /tmp/chess]
 ```
 
-This prints a Markdown block of inline ASCII charts (results by color, CPL by
-phase, move quality, wins-vs-losses CPL, mistakes by phase, time trouble, and an
-opening-performance table). Each chart is a fenced code block so the bar
-alignment renders correctly. Stdlib only — no dependencies.
+This prints a Markdown block with two parts: **charts** (ASCII bar charts in
+fenced code blocks — results by color, CPL by phase, move quality, wins-vs-losses
+CPL, time trouble) and **tables** (Markdown tables — mistakes by phase, opening
+performance, and top blunders with chess.com game links). Stdlib only — no
+dependencies.
 
 ### 5. Write the report
 
 Read `aggregate.json` and produce **two parts**:
 
-**A. Stats dashboard** — paste the `render_charts.py` output verbatim (keep the
-fenced code blocks intact; they preserve the bar alignment). Do not redraw the
-charts by hand. Add a short table only if it conveys something the charts don't.
+**A. Stats dashboard** — paste the `render_charts.py` output verbatim. Keep the
+fenced code blocks intact (they preserve the bar alignment) and leave the Markdown
+tables unfenced so they render as tables. Do not redraw the charts or tables by
+hand.
 
 **B. Prioritized tips** — the heart of the output. Rank the user's weaknesses by
 how much they actually cost, and for each give a concrete example and a fix:
