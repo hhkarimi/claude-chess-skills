@@ -75,10 +75,12 @@ def _games_with_blunders():
             ],
         },
         {
+            # eval_before is already player-POV in analysis.json, so a Black
+            # player who is losing has a negative eval_before.
             "my_color": "black",
             "url": "https://chess.com/g/2",
             "moves": [
-                {"class": "blunder", "eval_before": 400},
+                {"class": "blunder", "eval_before": -400},
             ],
         },
     ]
@@ -97,7 +99,9 @@ def test_section_blunder_origin_renders_chart():
     assert "winning" in out.lower()
 
 
-def test_eval_series_is_player_pov():
+def test_eval_series_uses_stored_player_pov_as_is():
+    # analysis.json already stores eval_after in the player's POV, so the values
+    # pass through unchanged regardless of color.
     game = {
         "my_color": "black",
         "moves": [
@@ -105,7 +109,7 @@ def test_eval_series_is_player_pov():
             {"eval_after": -200},
         ],
     }
-    assert rr.eval_series(game) == [-100, 200]
+    assert rr.eval_series(game) == [100, -200]
 
 
 def test_svg_sparkline_marks_the_blunder_index():

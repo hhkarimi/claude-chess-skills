@@ -152,20 +152,18 @@ def section_charts(agg: dict) -> str:
     )
 
 
-def pov(color: str, cp: float) -> float:
-    """White-POV centipawns -> the mover's POV (positive = good for mover)."""
-    return cp if color == "white" else -cp
-
-
 def blunder_origin_buckets(games: list) -> dict:
-    """Count blunders by the player-POV eval *before* the blunder move."""
+    """Count blunders by the player-POV eval *before* the blunder move.
+
+    analysis.json already stores eval_before/eval_after in the mover's POV
+    (see analyze_games.py), so no further sign flip is needed here.
+    """
     out = {"winning": 0, "equal": 0, "losing": 0}
     for g in games:
-        color = g.get("my_color", "white")
         for m in g.get("moves", []):
             if m.get("class") != "blunder":
                 continue
-            e = pov(color, m.get("eval_before", 0))
+            e = m.get("eval_before", 0)
             if e > 150:
                 out["winning"] += 1
             elif e < -150:
@@ -198,9 +196,12 @@ def section_blunder_origin(games: list) -> str:
 
 
 def eval_series(game: dict) -> list:
-    """Player-POV eval after each of the player's moves, in order."""
-    color = game.get("my_color", "white")
-    return [pov(color, m.get("eval_after", 0)) for m in game.get("moves", [])]
+    """Player-POV eval after each of the player's moves, in order.
+
+    analysis.json already stores eval_after in the mover's POV, so the values
+    are used as-is.
+    """
+    return [m.get("eval_after", 0) for m in game.get("moves", [])]
 
 
 def svg_sparkline(
