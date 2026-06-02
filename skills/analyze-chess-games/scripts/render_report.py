@@ -331,46 +331,6 @@ def svg_sparkline(
     return "".join(parts)
 
 
-def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
-    by_url = {g.get("url"): g for g in games}
-    seen, cards = set(), []
-    for b in agg.get("top_blunders", []):
-        url = b.get("game_url")
-        if url in seen or url not in by_url:
-            continue
-        seen.add(url)
-        g = by_url[url]
-        series = eval_series(g)
-        idx = next(
-            (
-                i
-                for i, m in enumerate(g.get("moves", []))
-                if m.get("move_no") == b.get("move_no")
-            ),
-            None,
-        )
-        move = _move_str(b)
-        link = f'<a href="{_esc(url)}">replay</a>' if url else ""
-        cards.append(
-            '<div class="card">'
-            f"<strong>{_esc(move)}</strong> "
-            f'<span class="muted">(swing {_esc(b.get("raw_swing"))}cp)</span> {link}<br>'
-            f"{svg_sparkline(series, mark_index=idx)}</div>"
-        )
-        if len(cards) >= limit:
-            break
-    if not cards:
-        return ""
-    return "\n".join(
-        [
-            "<h2>Eval trajectory into your biggest blunders</h2>",
-            '<p class="muted">Your evaluation across each game (your point of view), '
-            "with the blunder marked. Look for whether the line was already sliding or "
-            "fell off a cliff in one move.</p>",
-            *cards,
-        ]
-    )
-
 
 def opening_position_fen(game: dict) -> str | None:
     """FEN once the opening is complete: the first non-opening move's fen_before,
@@ -539,8 +499,9 @@ def section_openings(agg: dict, games: list, pgn_by_url: dict | None = None,
 
 
 def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
-                         limit: int = 8) -> str:
+                         games: list | None = None, limit: int = 8) -> str:
     pgn_by_url = pgn_by_url or {}
+    by_url = {g.get("url"): g for g in (games or [])}
     blunders = agg.get("top_blunders", [])
     if not blunders:
         return "<h2>Top blunders</h2><p class='muted'>(no blunders found)</p>"
@@ -548,6 +509,19 @@ def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
     for b in blunders[:limit]:
         move = _move_str(b)
         url = b.get("game_url") or ""
+        # eval-swing sparkline for this game, with the blunder move marked
+        spark = ""
+        g = by_url.get(url)
+        if g:
+            idx = next(
+                (
+                    i
+                    for i, m in enumerate(g.get("moves", []))
+                    if m.get("move_no") == b.get("move_no")
+                ),
+                None,
+            )
+            spark = svg_sparkline(eval_series(g), mark_index=idx)
         pgn = pgn_by_url.get(url)
         board = ""
         if pgn:
@@ -571,6 +545,7 @@ def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
             '<div class="card">'
             f"<h3>{_esc(move)} "
             f"<span class='muted'>· swing {_esc(b.get('raw_swing'))}cp</span></h3>"
+            f"{spark}"
             f"{board}"
             "<div>"
             f"<p>{_esc(b.get('phase'))} · {_esc(b.get('color'))} · "
@@ -580,8 +555,9 @@ def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
     return "\n".join(
         [
             "<h2>Top blunders</h2>",
-            '<p class="muted">Step through the last few moves into each blunder, '
-            "or open the game on chess.com.</p>",
+            '<p class="muted">Each card shows the evaluation swing for that game '
+            "(your point of view) with the blunder marked, then the board. Step "
+            "through the last few moves into the blunder, or open it on chess.com.</p>",
             *cards,
         ]
     )
@@ -702,9 +678,8 @@ def build_html(agg: dict, games: list, raw_games: list | None = None,
         f"<h1>Chess analysis ({n} games{acc_str})</h1>",
         section_charts(agg),
         section_blunder_origin(games),
-        section_trajectories(agg, games),
         section_openings(agg, games, pgn_by_url),
-        section_top_blunders(agg, pgn_by_url),
+        section_top_blunders(agg, pgn_by_url, games=games),
         section_study_plan(agg, tips_md),
         section_glossary(),
     ]

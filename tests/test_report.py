@@ -121,32 +121,6 @@ def test_svg_sparkline_marks_the_blunder_index():
     assert "<circle" in svg  # the marked blunder point
 
 
-def test_section_trajectories_one_chart_per_blunder_game():
-    agg = {
-        "top_blunders": [
-            {
-                "game_url": "https://chess.com/g/1",
-                "move_no": 2,
-                "san": "Qxf7",
-                "color": "white",
-                "raw_swing": 2000,
-            },
-        ]
-    }
-    games = [
-        {
-            "url": "https://chess.com/g/1",
-            "my_color": "white",
-            "moves": [
-                {"move_no": 1, "eval_after": 500},
-                {"move_no": 2, "eval_after": -1500},
-            ],
-        }
-    ]
-    out = rr.section_trajectories(agg, games)
-    assert "Eval trajectory" in out
-    assert out.count("<svg") >= 1
-    assert "Qxf7" in out
 
 
 def test_opening_position_fen_stops_at_end_of_opening():
@@ -368,7 +342,6 @@ def test_build_html_full_document_has_every_section():
     for heading in (
         "Charts",
         "Where your blunders come from",
-        "Eval trajectory",
         "Openings",
         "Top blunders",
         "Study plan",
@@ -503,3 +476,17 @@ def test_section_glossary_has_anchor_targets():
 def test_build_html_includes_glossary():
     out = rr.build_html(_min_agg(), [])
     assert 'id="glossary"' in out
+
+
+def test_section_top_blunders_includes_sparkline_from_games():
+    agg = {"top_blunders": [
+        {"game_url": "u1", "move_no": 2, "san": "Qxf7", "phase": "middlegame",
+         "color": "white", "result": "loss", "raw_swing": 2000,
+         "fen_before": chess.STARTING_FEN},
+    ]}
+    games = [{"url": "u1", "my_color": "white", "moves": [
+        {"move_no": 1, "eval_after": 500},
+        {"move_no": 2, "eval_after": -1500}]}]
+    out = rr.section_top_blunders(agg, games=games)
+    assert "<polyline" in out  # sparkline rendered inside the blunder card
+    assert "Top blunders" in out
