@@ -462,6 +462,15 @@ def _find_opening_game(games: list, opening: str, color: str) -> dict | None:
     return None
 
 
+def _board_html(frames: list, fen: str | None, color: str) -> str:
+    """Interactive stepper when frames exist, else a static board, else ''."""
+    if frames:
+        return board_player(frames, orient=color)
+    if fen:
+        return f'<div class="board">{board_svg(fen, color=color)}</div>'
+    return ""
+
+
 def section_openings(
     agg: dict, games: list, pgn_by_url: dict | None = None, limit: int = 8
 ) -> str:
@@ -480,12 +489,12 @@ def section_openings(
         g = _find_opening_game(games, o["opening"], o["color"])
         fen = opening_position_fen(g) if g else None
         pgn = pgn_by_url.get(g.get("url")) if g else None
-        board = ""
-        if pgn:
-            frames = game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
-            board = board_player(frames, orient=o["color"]) if frames else ""
-        if not board and fen:
-            board = f'<div class="board">{board_svg(fen, color=o["color"])}</div>'
+        frames = (
+            game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
+            if pgn
+            else []
+        )
+        board = _board_html(frames, fen, o["color"])
         cards.append(
             '<div class="card">'
             f"<h3>{_esc(o['opening'])} <span class='muted'>"
@@ -524,23 +533,12 @@ def section_top_blunders(
             )
             spark = svg_sparkline(eval_series(g), mark_index=idx)
         pgn = pgn_by_url.get(url)
-        board = ""
+        frames = []
         if pgn:
             ply = _blunder_ply(pgn, b.get("move_no"), b.get("color"), b.get("san"))
             if ply:
                 frames = game_frames(pgn, start_ply=max(1, ply - 4), end_ply=ply + 1)
-                board = (
-                    board_player(frames, orient=b.get("color", "white"))
-                    if frames
-                    else ""
-                )
-        if not board:
-            fen = b.get("fen_before")
-            if fen:
-                board = (
-                    f'<div class="board">'
-                    f"{board_svg(fen, color=b.get('color', 'white'))}</div>"
-                )
+        board = _board_html(frames, b.get("fen_before"), b.get("color", "white"))
         link = f'<a href="{_esc(url)}">replay on chess.com</a>' if url else ""
         cards.append(
             '<div class="card">'
@@ -584,6 +582,8 @@ def md_to_html(text: str) -> str:
             blocks.append("<p>" + " ".join(inline(p) for p in para) + "</p>")
             para.clear()
 
+    # Headings are intentionally demoted (# and ## -> h3, ### -> h4) so coaching
+    # prose never outranks the report's own <h2> section titles.
     for raw in lines:
         line = raw.rstrip()
         if not line.strip():
@@ -611,6 +611,15 @@ def md_to_html(text: str) -> str:
     return "\n".join(blocks)
 
 
+def _weak_openings(agg: dict) -> list:
+    """Openings worth shoring up: a losing record or a high opening CPL."""
+    return [
+        o
+        for o in agg.get("opening_performance", [])
+        if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
+    ]
+
+
 def section_practice(agg: dict) -> str:
     """Tailored lichess practice links chosen from the player's weaknesses."""
     cpl = agg.get("avg_cpl_by_phase", {})
@@ -631,11 +640,7 @@ def section_practice(agg: dict) -> str:
             "— the endgame is one of your two leakiest phases; these teach the basic "
             "winning and drawing techniques.</li>"
         )
-    weak = [
-        o
-        for o in agg.get("opening_performance", [])
-        if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
-    ]
+    weak = _weak_openings(agg)
     if weak:
         worst = sorted(
             weak,
@@ -680,11 +685,7 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     )
 
     # 2. Weak openings: losing record or opening CPL > 60.
-    weak = [
-        o
-        for o in agg.get("opening_performance", [])
-        if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
-    ]
+    weak = _weak_openings(agg)
     if weak:
         wk = "".join(
             f"<li>{_esc(o['opening'])} ({_esc(o['color'])}): "
