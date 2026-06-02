@@ -768,3 +768,13 @@ def test_build_html_opening_stepper_shows_cp_when_opening_line_present():
     assert "+0.2" in out
     assert "White's point of view" in out
     assert out.count("function chessStep") == 1
+
+
+def test_svg_bars_widens_label_column_for_long_labels():
+    import re
+    long_svg = rr.svg_bars([("From winning (>+1.5): 64%", 100)])
+    short_svg = rr.svg_bars([("Wins", 100)])
+    long_x = int(re.search(r'<rect x="(\d+)"', long_svg).group(1))
+    short_x = int(re.search(r'<rect x="(\d+)"', short_svg).group(1))
+    assert short_x == 130  # short labels keep the default column
+    assert long_x > 150  # long label pushes the bar clear of the text

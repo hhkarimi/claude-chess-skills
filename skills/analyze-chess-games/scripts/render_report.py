@@ -154,7 +154,11 @@ def svg_bars(
     rows = [(lab, v) for lab, v in rows if v is not None]
     if not rows:
         return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
-    row_h, pad_l, pad_r, top = 28, 130, 70, 8
+    row_h, pad_r, top = 28, 70, 8
+    # Size the label column to the longest label (~7px/char at 13px) so long
+    # labels like the blunder-origin rows aren't overdrawn by the bars.
+    longest = max(len(lab) for lab, _ in rows)
+    pad_l = min(width // 2, max(130, longest * 7 + 12))
     max_v = max((v for _, v in rows), default=0) or 1
     bar_area = width - pad_l - pad_r
     height = top * 2 + row_h * len(rows)
