@@ -104,14 +104,17 @@ def render_cpl_by_result(agg: dict) -> str:
     return render_value_bars(rows, value_fmt="{:.0f}", unit=" cpl")
 
 
-def render_blunders_by_phase(agg: dict) -> str:
+def render_mistakes_table(agg: dict) -> str:
+    """Mistakes-by-phase as a Markdown table."""
     bbp = agg.get("blunders_by_phase", {})
-    header = f"{'Phase':<11} {'Blun':>5} {'Mist':>5} {'Inacc':>6}"
-    lines = [header]
+    lines = [
+        "| Phase | Blunders | Mistakes | Inaccuracies |",
+        "|---|---:|---:|---:|",
+    ]
     for p in ("opening", "middlegame", "endgame"):
         c = bbp.get(p, {})
         lines.append(
-            f"{p.title():<11} {c.get('blunder', 0):>5} {c.get('mistake', 0):>5} {c.get('inaccuracy', 0):>6}"
+            f"| {p.title()} | {c.get('blunder', 0)} | {c.get('mistake', 0)} | {c.get('inaccuracy', 0)} |"
         )
     return "\n".join(lines)
 
@@ -129,19 +132,44 @@ def render_time_trouble(agg: dict) -> str:
 
 
 def render_openings(agg: dict, limit: int = 8) -> str:
+    """Opening performance as a Markdown table."""
     ops = agg.get("opening_performance", [])
     if not ops:
         return "(no opening played 2+ times in this sample)"
-    name_w = min(40, max(len(o["opening"]) for o in ops[:limit]))
-    header = f"{'Opening':<{name_w}} {'Col':<5} {'Rec':>7} {'Win%':>5}  {'OpenCPL':>7}"
-    lines = [header]
+    lines = [
+        "| Opening | Color | Record | Win% | Opening CPL |",
+        "|---|---|---|---:|---:|",
+    ]
     for o in ops[:limit]:
         rec = f"{o['win']}-{o['loss']}-{o['draw']}"
         wr = f"{100 * o['win'] / o['games']:.0f}%"
         cpl = o.get("avg_opening_cpl")
         cpl_str = f"{cpl:.0f}" if cpl is not None else "-"
-        name = o["opening"][:name_w]
-        lines.append(f"{name:<{name_w}} {o['color']:<5} {rec:>7} {wr:>5}  {cpl_str:>7}")
+        lines.append(
+            f"| {o['opening']} | {o['color'].title()} | {rec} | {wr} | {cpl_str} |"
+        )
+    return "\n".join(lines)
+
+
+def render_top_blunders(agg: dict, limit: int = 8) -> str:
+    """Top blunders as a Markdown table with chess.com game links."""
+    blunders = agg.get("top_blunders", [])
+    if not blunders:
+        return "(no blunders found)"
+    lines = [
+        "| Eval swing | Move | Phase | Color | Result | Game |",
+        "|---:|---|---|---|---|---|",
+    ]
+    for b in blunders[:limit]:
+        # white moves render "12. Nf3", black moves "12...Nf6"
+        sep = ". " if b["color"] == "white" else "..."
+        move = f"{b['move_no']}{sep}{b['san']}"
+        url = b.get("game_url") or ""
+        game = f"[link]({url})" if url else "-"
+        lines.append(
+            f"| {b['raw_swing']} cp | {move} | {b['phase']} | "
+            f"{b['color'].title()} | {b['result']} | {game} |"
+        )
     return "\n".join(lines)
 
 
@@ -150,7 +178,8 @@ def build_report_charts(agg: dict) -> str:
     acc = agg.get("chesscom_avg_accuracy")
     acc_str = f" · avg accuracy {acc}%" if acc is not None else ""
     sections = [
-        f"## Game analysis charts ({n} games{acc_str})",
+        f"## Game analysis ({n} games{acc_str})",
+        "### Charts",
         _fenced("Results by color", render_results_by_color(agg)),
         _fenced(
             "Average centipawn loss by phase (lower is better)",
@@ -158,9 +187,11 @@ def build_report_charts(agg: dict) -> str:
         ),
         _fenced("Move quality (last %d games)" % n, render_move_quality(agg)),
         _fenced("Average centipawn loss — wins vs losses", render_cpl_by_result(agg)),
-        _fenced("Mistakes by phase", render_blunders_by_phase(agg)),
         _fenced("Time trouble", render_time_trouble(agg)),
-        _fenced("Opening performance (2+ games)", render_openings(agg)),
+        "### Tables",
+        "**Mistakes by phase**\n\n" + render_mistakes_table(agg),
+        "**Opening performance (2+ games)**\n\n" + render_openings(agg),
+        "**Top blunders (biggest eval swings)**\n\n" + render_top_blunders(agg),
     ]
     return "\n\n".join(sections)
 
