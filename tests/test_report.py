@@ -32,3 +32,19 @@ def test_build_html_is_a_full_document():
     assert "<html" in html and "</html>" in html
     assert "<style>" in html  # self-contained, inline CSS
     assert "2 games" in html  # summary header rendered
+
+
+def test_svg_bars_emits_one_rect_per_nonzero_row():
+    svg = rr.svg_bars([("Opening", 30), ("Middlegame", 90), ("Endgame", 0)])
+    assert svg.startswith("<svg")
+    assert svg.count("<rect") == 2  # zero-valued row drawn as label only
+    assert "Middlegame" in svg
+    assert "90" in svg
+
+
+def test_section_charts_has_all_metric_headings():
+    out = rr.section_charts(_min_agg())
+    for heading in ("Results by color", "centipawn loss by phase",
+                    "Move quality", "wins vs losses", "Time trouble"):
+        assert heading in out
+    assert "<svg" in out
