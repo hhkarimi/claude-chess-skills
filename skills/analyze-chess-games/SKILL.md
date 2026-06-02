@@ -86,21 +86,30 @@ CPL, time trouble) and **tables** (Markdown tables — mistakes by phase, openin
 performance, and top blunders with chess.com game links). Stdlib only — no
 dependencies.
 
-### 5. Render the HTML report (optional, richer)
+### 5. Render the HTML report (richer)
 
 Generate a self-contained HTML report with SVG charts, per-opening board
 diagrams, a blunder-origin chart and per-blunder eval-swing sparklines, and a
-study plan:
+study plan.
+
+**Always author the Coach's notes first.** Write the prioritized coaching prose
+(step 6, part B) to `chess-analysis/<username>/tips-<username>.md`, then render —
+the renderer auto-injects that file as a "Coach's notes" block at the top of the
+study plan, so it is always included. Coach's notes are Claude-authored and the
+most valuable part of the report; the script cannot generate them. If you render
+without a tips file, the renderer still succeeds but prints a `warning:` reminding
+you the report has no Coach's notes.
 
 ```bash
-uv run scripts/render_report.py --in ./chess-analysis/<username> [--tips tips.md]
+# 1) write tips-<username>.md (see step 6B), then:
+uv run scripts/render_report.py --in ./chess-analysis/<username>
+# (--tips path/to/file.md overrides the auto-detected tips-<username>.md)
 ```
 
 Writes `report-<username>.html` to the input dir — one file, no external assets,
-opens in any browser offline. The study plan is generated from the data; if you
-pass `--tips path/to/tips.md` (Markdown), your written coaching is injected as a
-"Coach's notes" block at the top of the plan. With no `--tips`, the renderer
-picks up `tips-<username>.md` from the input dir if present. Only the `python-chess` dependency
+opens in any browser offline. The study plan is generated from the data; your
+`tips-<username>.md` is injected as the "Coach's notes" block at the top of it.
+Only the `python-chess` dependency
 is needed (already used by the analyzer), and `render_charts.py` is unaffected.
 The report is interactive: opening and top-blunder boards step through the moves
 (First/Prev/Next/Last) and each blunder card shows its evaluation-swing chart;
@@ -135,6 +144,10 @@ how much they actually cost, and for each give a concrete example and a fix:
 
 Keep the tips specific and grounded in this player's data. Do not invent
 weaknesses the numbers don't support.
+
+Save part B to `chess-analysis/<username>/tips-<username>.md` so the HTML report
+(step 5) picks it up as Coach's notes. The same prose serves both outputs: the
+Markdown chat report here and the "Coach's notes" block in the HTML report.
 
 ## Requirements
 

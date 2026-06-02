@@ -1,6 +1,7 @@
 """Unit tests for render_report HTML generation (no engine run, no network)."""
 
 import json
+import sys
 
 import chess
 import pytest
@@ -68,6 +69,32 @@ def test_load_errors_on_ambiguous_aggregate(tmp_path):
     (tmp_path / "aggregate-Bob.json").write_text(json.dumps(_min_agg()))
     with pytest.raises(SystemExit):
         rr.load(str(tmp_path))
+
+
+def _seed_user(tmp_path, name="Alice"):
+    (tmp_path / f"aggregate-{name}.json").write_text(json.dumps(_min_agg()))
+    (tmp_path / f"games-{name}.json").write_text(
+        json.dumps({"username": name, "games": []})
+    )
+
+
+def test_main_warns_when_no_tips(tmp_path, monkeypatch, capsys):
+    _seed_user(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["render_report.py", "--in", str(tmp_path)])
+    rr.main()
+    assert (tmp_path / "report-Alice.html").exists()
+    err = capsys.readouterr().err
+    assert "warning" in err
+    assert "Coach's notes" in err
+
+
+def test_main_no_warning_when_tips_present(tmp_path, monkeypatch, capsys):
+    _seed_user(tmp_path)
+    (tmp_path / "tips-Alice.md").write_text("## Coach\n\nPlay better.")
+    monkeypatch.setattr(sys, "argv", ["render_report.py", "--in", str(tmp_path)])
+    rr.main()
+    err = capsys.readouterr().err
+    assert "warning" not in err
 
 
 def test_build_html_is_a_full_document():
