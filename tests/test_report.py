@@ -772,6 +772,7 @@ def test_build_html_opening_stepper_shows_cp_when_opening_line_present():
 
 def test_svg_bars_widens_label_column_for_long_labels():
     import re
+
     long_svg = rr.svg_bars([("From winning (>+1.5): 64%", 100)])
     short_svg = rr.svg_bars([("Wins", 100)])
     long_x = int(re.search(r'<rect x="(\d+)"', long_svg).group(1))
