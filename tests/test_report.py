@@ -76,3 +76,31 @@ def test_section_blunder_origin_renders_chart():
     assert "Where your blunders come from" in out
     assert "<svg" in out
     assert "winning" in out.lower()
+
+
+def test_eval_series_is_player_pov():
+    game = {"my_color": "black", "moves": [
+        {"eval_after": 100}, {"eval_after": -200},
+    ]}
+    assert rr.eval_series(game) == [-100, 200]
+
+
+def test_svg_sparkline_marks_the_blunder_index():
+    svg = rr.svg_sparkline([100, 50, -300, -280], mark_index=2)
+    assert svg.startswith("<svg")
+    assert "<polyline" in svg
+    assert "<circle" in svg  # the marked blunder point
+
+
+def test_section_trajectories_one_chart_per_blunder_game():
+    agg = {"top_blunders": [
+        {"game_url": "https://chess.com/g/1", "move_no": 2, "san": "Qxf7",
+         "color": "white", "raw_swing": 2000},
+    ]}
+    games = [{"url": "https://chess.com/g/1", "my_color": "white", "moves": [
+        {"move_no": 1, "eval_after": 500}, {"move_no": 2, "eval_after": -1500},
+    ]}]
+    out = rr.section_trajectories(agg, games)
+    assert "Eval trajectory" in out
+    assert out.count("<svg") >= 1
+    assert "Qxf7" in out

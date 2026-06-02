@@ -181,6 +181,82 @@ def section_blunder_origin(games: list) -> str:
     ])
 
 
+def eval_series(game: dict) -> list:
+    """Player-POV eval after each of the player's moves, in order."""
+    color = game.get("my_color", "white")
+    return [pov(color, m.get("eval_after", 0)) for m in game.get("moves", [])]
+
+
+def svg_sparkline(values: list, *, mark_index: int | None = None,
+                  width: int = 320, height: int = 70) -> str:
+    """A small eval line. y is clamped to ±1000cp so one blowup doesn't flatten it."""
+    if not values:
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
+    cap = 1000
+    clamped = [max(-cap, min(cap, v)) for v in values]
+    n = len(clamped)
+    pad = 6
+
+    def x(i: int) -> float:
+        return pad + (width - 2 * pad) * (i / (n - 1) if n > 1 else 0)
+
+    def y(v: float) -> float:
+        return pad + (height - 2 * pad) * (1 - (v + cap) / (2 * cap))
+
+    pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(clamped))
+    mid = y(0)
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
+        f'<line x1="{pad}" y1="{mid:.1f}" x2="{width - pad}" y2="{mid:.1f}" '
+        'stroke="#ccc" stroke-dasharray="3 3"></line>',
+        f'<polyline fill="none" stroke="#3b6ea5" stroke-width="2" points="{pts}"></polyline>',
+    ]
+    if mark_index is not None and 0 <= mark_index < n:
+        parts.append(
+            f'<circle cx="{x(mark_index):.1f}" cy="{y(clamped[mark_index]):.1f}" '
+            'r="4" fill="#b5482f"></circle>'
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
+    by_url = {g.get("url"): g for g in games}
+    seen, cards = set(), []
+    for b in agg.get("top_blunders", []):
+        url = b.get("game_url")
+        if url in seen or url not in by_url:
+            continue
+        seen.add(url)
+        g = by_url[url]
+        series = eval_series(g)
+        idx = next(
+            (i for i, m in enumerate(g.get("moves", []))
+             if m.get("move_no") == b.get("move_no")),
+            None,
+        )
+        sep = ". " if b.get("color") == "white" else "..."
+        move = f"{b.get('move_no')}{sep}{b.get('san')}"
+        link = f'<a href="{_esc(url)}">replay</a>' if url else ""
+        cards.append(
+            '<div class="card">'
+            f"<strong>{_esc(move)}</strong> "
+            f'<span class="muted">(swing {_esc(b.get("raw_swing"))}cp)</span> {link}<br>'
+            f"{svg_sparkline(series, mark_index=idx)}</div>"
+        )
+        if len(cards) >= limit:
+            break
+    if not cards:
+        return ""
+    return "\n".join([
+        "<h2>Eval trajectory into your biggest blunders</h2>",
+        '<p class="muted">Your evaluation across each game (your point of view), '
+        "with the blunder marked. Look for whether the line was already sliding or "
+        "fell off a cliff in one move.</p>",
+        *cards,
+    ])
+
+
 def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
     n = agg.get("games_analyzed", 0)
@@ -190,6 +266,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         f"<h1>Chess analysis ({n} games{acc_str})</h1>",
         section_charts(agg),
         section_blunder_origin(games),
+        section_trajectories(agg, games),
     ]
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
