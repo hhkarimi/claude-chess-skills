@@ -4,6 +4,7 @@ __pycache__/
 .uv/
 .DS_Store
 /tmp/
+chess-analysis/
 games*.json
 analysis*.json
 aggregate*.json

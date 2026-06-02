@@ -25,7 +25,7 @@ Stockfish: if the binary is not on PATH, this script installs it with Homebrew
 --stockfish.
 
 Usage:
-    uv run analyze_games.py [--in /tmp/chess] [--depth 12] [--max-games N]
+    uv run analyze_games.py [--in ./chess-analysis] [--depth 12] [--max-games N]
                             [--stockfish PATH] [--no-install]
 """
 
@@ -355,7 +355,7 @@ def build_aggregate(per_game: list[dict], top_n: int = 12) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--in", dest="in_dir", default="/tmp/chess", help="dir with games.json"
+        "--in", dest="in_dir", default="chess-analysis", help="dir with games.json"
     )
     ap.add_argument(
         "--depth", type=int, default=12, help="Stockfish search depth (default 12)"
