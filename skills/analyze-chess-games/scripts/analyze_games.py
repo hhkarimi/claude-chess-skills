@@ -4,11 +4,11 @@
 # ///
 """Engine-backed analysis of fetched chess.com games.
 
-Reads games.json (from fetch_games.py), runs each game through Stockfish via
-python-chess, and emits:
+Reads the games JSON in --in (games-<username>.json from fetch_games.py), runs
+each game through Stockfish via python-chess, and emits alongside it:
 
-  - analysis.json   — per-game, per-move detail for the player's moves
-  - aggregate.json  — summary stats + top blunders, the input for the tips report
+  - analysis-<username>.json   — per-game, per-move detail for the player's moves
+  - aggregate-<username>.json  — summary stats + top blunders, input for the report
 
 Method (one engine eval per position, the efficient sweep):
   For every position p_0..p_n we record Stockfish's evaluation from White's point
@@ -51,6 +51,22 @@ BLUNDER = 300
 # catastrophe doesn't dominate average CPL.
 EVAL_CAP = 2000
 CPL_CAP = 1000  # per-move CPL ceiling for averaging
+
+
+def find_games_file(in_dir: Path) -> Path:
+    """Locate the games JSON in in_dir. Accepts the per-user games-<name>.json
+    written by fetch_games.py (and legacy games.json). Errors if absent or
+    ambiguous, so a dir holding multiple users can't be analyzed by accident."""
+    matches = sorted(in_dir.glob("games*.json"))
+    if not matches:
+        raise SystemExit(f"No games*.json in {in_dir} — run fetch_games.py first.")
+    if len(matches) > 1:
+        names = ", ".join(p.name for p in matches)
+        raise SystemExit(
+            f"Multiple games files in {in_dir} ({names}); point --in at one "
+            "user's directory."
+        )
+    return matches[0]
 
 
 def ensure_stockfish(explicit: str | None, allow_install: bool) -> str:
@@ -391,7 +407,10 @@ def build_aggregate(per_game: list[dict], top_n: int = 12) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--in", dest="in_dir", default="chess-analysis", help="dir with games.json"
+        "--in",
+        dest="in_dir",
+        default="chess-analysis",
+        help="dir with games-<username>.json (e.g. chess-analysis/<username>)",
     )
     ap.add_argument(
         "--depth", type=int, default=12, help="Stockfish search depth (default 12)"
@@ -406,12 +425,12 @@ def main() -> None:
     args = ap.parse_args()
 
     in_dir = Path(args.in_dir)
-    games_file = in_dir / "games.json"
-    if not games_file.exists():
-        raise SystemExit(f"{games_file} not found — run fetch_games.py first.")
+    games_file = find_games_file(in_dir)
 
     data = json.loads(games_file.read_text())
     games = data["games"]
+    username = data.get("username", "")
+    suffix = f"-{username}" if username else ""
     if args.max_games:
         games = games[: args.max_games]
 
@@ -437,11 +456,12 @@ def main() -> None:
 
     aggregate = build_aggregate(per_game)
 
-    (in_dir / "analysis.json").write_text(json.dumps(per_game, indent=2))
-    (in_dir / "aggregate.json").write_text(json.dumps(aggregate, indent=2))
+    analysis_file = in_dir / f"analysis{suffix}.json"
+    aggregate_file = in_dir / f"aggregate{suffix}.json"
+    analysis_file.write_text(json.dumps(per_game, indent=2))
+    aggregate_file.write_text(json.dumps(aggregate, indent=2))
     print(
-        f"Analyzed {len(per_game)} games. Wrote {in_dir / 'analysis.json'} and "
-        f"{in_dir / 'aggregate.json'}.",
+        f"Analyzed {len(per_game)} games. Wrote {analysis_file} and {aggregate_file}.",
         file=sys.stderr,
     )
 

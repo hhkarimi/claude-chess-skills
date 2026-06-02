@@ -9,6 +9,11 @@ games*.json
 analysis*.json
 aggregate*.json
 *.pgn
+# per-user report/coaching outputs carry the username in the filename — keep them
+# out of git even if rendered outside chess-analysis/. Does not match the
+# committed docs/sample-report.html (it doesn't start with "report-").
+report-*.html
+tips-*.md
 !tests/fixtures/*.json
 !tests/fixtures/*.pgn
 

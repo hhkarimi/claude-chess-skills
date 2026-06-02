@@ -1,6 +1,10 @@
 """Unit tests for render_report HTML generation (no engine run, no network)."""
 
+import json
+import sys
+
 import chess
+import pytest
 
 import render_report as rr
 
@@ -32,6 +36,65 @@ def _min_agg():
         "opening_performance": [],
         "top_blunders": [],
     }
+
+
+def test_load_discovers_suffixed_files_and_username(tmp_path):
+    (tmp_path / "aggregate-Alice.json").write_text(json.dumps(_min_agg()))
+    (tmp_path / "analysis-Alice.json").write_text(json.dumps([{"index": 1}]))
+    (tmp_path / "games-Alice.json").write_text(
+        json.dumps({"username": "Alice", "games": [{"index": 1}]})
+    )
+    agg, games, raw_games, username = rr.load(str(tmp_path))
+    assert username == "Alice"
+    assert agg["games_analyzed"] == 2
+    assert games == [{"index": 1}]
+    assert raw_games == [{"index": 1}]
+
+
+def test_load_accepts_legacy_unsuffixed(tmp_path):
+    (tmp_path / "aggregate.json").write_text(json.dumps(_min_agg()))
+    agg, games, raw_games, username = rr.load(str(tmp_path))
+    assert username == ""
+    assert games == []
+    assert raw_games == []
+
+
+def test_load_errors_without_aggregate(tmp_path):
+    with pytest.raises(SystemExit):
+        rr.load(str(tmp_path))
+
+
+def test_load_errors_on_ambiguous_aggregate(tmp_path):
+    (tmp_path / "aggregate-Alice.json").write_text(json.dumps(_min_agg()))
+    (tmp_path / "aggregate-Bob.json").write_text(json.dumps(_min_agg()))
+    with pytest.raises(SystemExit):
+        rr.load(str(tmp_path))
+
+
+def _seed_user(tmp_path, name="Alice"):
+    (tmp_path / f"aggregate-{name}.json").write_text(json.dumps(_min_agg()))
+    (tmp_path / f"games-{name}.json").write_text(
+        json.dumps({"username": name, "games": []})
+    )
+
+
+def test_main_warns_when_no_tips(tmp_path, monkeypatch, capsys):
+    _seed_user(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["render_report.py", "--in", str(tmp_path)])
+    rr.main()
+    assert (tmp_path / "report-Alice.html").exists()
+    err = capsys.readouterr().err
+    assert "warning" in err
+    assert "Coach's notes" in err
+
+
+def test_main_no_warning_when_tips_present(tmp_path, monkeypatch, capsys):
+    _seed_user(tmp_path)
+    (tmp_path / "tips-Alice.md").write_text("## Coach\n\nPlay better.")
+    monkeypatch.setattr(sys, "argv", ["render_report.py", "--in", str(tmp_path)])
+    rr.main()
+    err = capsys.readouterr().err
+    assert "warning" not in err
 
 
 def test_build_html_is_a_full_document():

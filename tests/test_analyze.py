@@ -1,6 +1,7 @@
 """Unit tests for analyze_games engine-free logic (no Stockfish required)."""
 
 import chess
+import pytest
 
 import analyze_games as az
 
@@ -150,6 +151,30 @@ def test_load_book_parses_epds_and_skips_comments(tmp_path):
 
 def test_load_book_missing_file_is_empty_set(tmp_path):
     assert az.load_book(tmp_path / "nope.txt") == set()
+
+
+def test_find_games_file_picks_suffixed(tmp_path):
+    f = tmp_path / "games-Alice.json"
+    f.write_text("{}")
+    assert az.find_games_file(tmp_path) == f
+
+
+def test_find_games_file_accepts_legacy_unsuffixed(tmp_path):
+    f = tmp_path / "games.json"
+    f.write_text("{}")
+    assert az.find_games_file(tmp_path) == f
+
+
+def test_find_games_file_errors_when_absent(tmp_path):
+    with pytest.raises(SystemExit):
+        az.find_games_file(tmp_path)
+
+
+def test_find_games_file_errors_when_ambiguous(tmp_path):
+    (tmp_path / "games-Alice.json").write_text("{}")
+    (tmp_path / "games-Bob.json").write_text("{}")
+    with pytest.raises(SystemExit):
+        az.find_games_file(tmp_path)
 
 
 def test_opening_line_truncates_at_deepest_in_book_ply():

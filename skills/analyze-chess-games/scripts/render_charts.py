@@ -199,15 +199,25 @@ def build_report_charts(agg: dict) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--in", dest="in_dir", default="chess-analysis", help="dir with aggregate.json"
+        "--in",
+        dest="in_dir",
+        default="chess-analysis",
+        help="dir with aggregate-<username>.json (e.g. chess-analysis/<username>)",
     )
     args = ap.parse_args()
 
-    agg_file = Path(args.in_dir) / "aggregate.json"
-    if not agg_file.exists():
-        raise SystemExit(f"{agg_file} not found — run analyze_games.py first.")
+    d = Path(args.in_dir)
+    matches = sorted(d.glob("aggregate*.json"))
+    if not matches:
+        raise SystemExit(f"No aggregate*.json in {d} — run analyze_games.py first.")
+    if len(matches) > 1:
+        names = ", ".join(p.name for p in matches)
+        raise SystemExit(
+            f"Multiple aggregate files in {d} ({names}); point --in at one "
+            "user's directory."
+        )
 
-    agg = json.loads(agg_file.read_text())
+    agg = json.loads(matches[0].read_text())
     print(build_report_charts(agg))
     print(file=sys.stderr)
     print("Charts rendered. Paste the block above into the report.", file=sys.stderr)
