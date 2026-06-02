@@ -11,13 +11,19 @@ def _min_agg():
         "results": {"win": 1, "loss": 1, "draw": 0},
         "avg_cpl_by_phase": {"opening": 30, "middlegame": 90, "endgame": 80},
         "move_quality": {
-            "blunders": 4, "mistakes": 6, "inaccuracies": 8,
-            "blunders_per_game": 2.0, "mistakes_per_game": 3.0,
+            "blunders": 4,
+            "mistakes": 6,
+            "inaccuracies": 8,
+            "blunders_per_game": 2.0,
+            "mistakes_per_game": 3.0,
         },
         "avg_cpl_by_result": {"win": 50, "loss": 95, "draw": 20},
-        "blunders_by_phase": {"middlegame": {"blunder": 4, "mistake": 6, "inaccuracy": 8}},
+        "blunders_by_phase": {
+            "middlegame": {"blunder": 4, "mistake": 6, "inaccuracy": 8}
+        },
         "time_trouble": {
-            "my_moves_in_time_trouble": 5, "blunders_in_time_trouble": 1,
+            "my_moves_in_time_trouble": 5,
+            "blunders_in_time_trouble": 1,
             "losses_with_time_trouble_blunder": 1,
             "share_of_blunders_in_time_trouble": 0.25,
         },
@@ -44,8 +50,13 @@ def test_svg_bars_emits_one_rect_per_nonzero_row():
 
 def test_section_charts_has_all_metric_headings():
     out = rr.section_charts(_min_agg())
-    for heading in ("Results by color", "centipawn loss by phase",
-                    "Move quality", "wins vs losses", "Time trouble"):
+    for heading in (
+        "Results by color",
+        "centipawn loss by phase",
+        "Move quality",
+        "wins vs losses",
+        "Time trouble",
+    ):
         assert heading in out
     assert "<svg" in out
 
@@ -54,14 +65,22 @@ def _games_with_blunders():
     # white blundering from a winning (+500) and an equal (+20) position;
     # black blundering from a losing (white +400 => black -400) position.
     return [
-        {"my_color": "white", "url": "https://chess.com/g/1", "moves": [
-            {"class": "blunder", "eval_before": 500},
-            {"class": None, "eval_before": -100},
-            {"class": "blunder", "eval_before": 20},
-        ]},
-        {"my_color": "black", "url": "https://chess.com/g/2", "moves": [
-            {"class": "blunder", "eval_before": 400},
-        ]},
+        {
+            "my_color": "white",
+            "url": "https://chess.com/g/1",
+            "moves": [
+                {"class": "blunder", "eval_before": 500},
+                {"class": None, "eval_before": -100},
+                {"class": "blunder", "eval_before": 20},
+            ],
+        },
+        {
+            "my_color": "black",
+            "url": "https://chess.com/g/2",
+            "moves": [
+                {"class": "blunder", "eval_before": 400},
+            ],
+        },
     ]
 
 
@@ -79,9 +98,13 @@ def test_section_blunder_origin_renders_chart():
 
 
 def test_eval_series_is_player_pov():
-    game = {"my_color": "black", "moves": [
-        {"eval_after": 100}, {"eval_after": -200},
-    ]}
+    game = {
+        "my_color": "black",
+        "moves": [
+            {"eval_after": 100},
+            {"eval_after": -200},
+        ],
+    }
     assert rr.eval_series(game) == [-100, 200]
 
 
@@ -93,13 +116,27 @@ def test_svg_sparkline_marks_the_blunder_index():
 
 
 def test_section_trajectories_one_chart_per_blunder_game():
-    agg = {"top_blunders": [
-        {"game_url": "https://chess.com/g/1", "move_no": 2, "san": "Qxf7",
-         "color": "white", "raw_swing": 2000},
-    ]}
-    games = [{"url": "https://chess.com/g/1", "my_color": "white", "moves": [
-        {"move_no": 1, "eval_after": 500}, {"move_no": 2, "eval_after": -1500},
-    ]}]
+    agg = {
+        "top_blunders": [
+            {
+                "game_url": "https://chess.com/g/1",
+                "move_no": 2,
+                "san": "Qxf7",
+                "color": "white",
+                "raw_swing": 2000,
+            },
+        ]
+    }
+    games = [
+        {
+            "url": "https://chess.com/g/1",
+            "my_color": "white",
+            "moves": [
+                {"move_no": 1, "eval_after": 500},
+                {"move_no": 2, "eval_after": -1500},
+            ],
+        }
+    ]
     out = rr.section_trajectories(agg, games)
     assert "Eval trajectory" in out
     assert out.count("<svg") >= 1
@@ -107,38 +144,59 @@ def test_section_trajectories_one_chart_per_blunder_game():
 
 
 def test_opening_position_fen_stops_at_end_of_opening():
-    game = {"moves": [
-        {"phase": "opening", "fen_before": "FEN_OPENING_1"},
-        {"phase": "opening", "fen_before": "FEN_OPENING_2"},
-        {"phase": "middlegame", "fen_before": "FEN_MIDDLE"},
-    ]}
+    game = {
+        "moves": [
+            {"phase": "opening", "fen_before": "FEN_OPENING_1"},
+            {"phase": "opening", "fen_before": "FEN_OPENING_2"},
+            {"phase": "middlegame", "fen_before": "FEN_MIDDLE"},
+        ]
+    }
     assert rr.opening_position_fen(game) == "FEN_MIDDLE"
 
 
 def test_opening_position_fen_all_opening_uses_last():
-    game = {"moves": [
-        {"phase": "opening", "fen_before": "A"},
-        {"phase": "opening", "fen_before": "B"},
-    ]}
+    game = {
+        "moves": [
+            {"phase": "opening", "fen_before": "A"},
+            {"phase": "opening", "fen_before": "B"},
+        ]
+    }
     assert rr.opening_position_fen(game) == "B"
 
 
 def test_board_svg_renders_real_svg_from_startpos():
     import chess
+
     svg = rr.board_svg(chess.STARTING_FEN, color="white")
     assert "<svg" in svg
 
 
 def test_section_openings_includes_board_when_game_matches():
-    agg = {"opening_performance": [
-        {"opening": "Scotch Game", "color": "white", "games": 2,
-         "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 40.0},
-    ]}
+    agg = {
+        "opening_performance": [
+            {
+                "opening": "Scotch Game",
+                "color": "white",
+                "games": 2,
+                "win": 2,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 40.0,
+            },
+        ]
+    }
     import chess
-    games = [{"opening": "Scotch Game", "my_color": "white", "moves": [
-        {"phase": "opening", "fen_before": chess.STARTING_FEN},
-        {"phase": "middlegame", "fen_before": chess.STARTING_FEN},
-    ]}]
+
+    games = [
+        {
+            "opening": "Scotch Game",
+            "my_color": "white",
+            "moves": [
+                {"phase": "opening", "fen_before": chess.STARTING_FEN},
+                {"phase": "middlegame", "fen_before": chess.STARTING_FEN},
+            ],
+        }
+    ]
     out = rr.section_openings(agg, games)
     assert "Scotch Game" in out
     assert "<svg" in out  # board rendered
@@ -153,11 +211,21 @@ def test_section_openings_empty_is_graceful():
 
 def test_section_top_blunders_renders_boards_and_links():
     import chess
-    agg = {"top_blunders": [
-        {"game_url": "https://chess.com/g/1", "move_no": 20, "san": "Qxf7",
-         "phase": "middlegame", "color": "white", "result": "loss",
-         "raw_swing": 2540, "fen_before": chess.STARTING_FEN},
-    ]}
+
+    agg = {
+        "top_blunders": [
+            {
+                "game_url": "https://chess.com/g/1",
+                "move_no": 20,
+                "san": "Qxf7",
+                "phase": "middlegame",
+                "color": "white",
+                "result": "loss",
+                "raw_swing": 2540,
+                "fen_before": chess.STARTING_FEN,
+            },
+        ]
+    }
     out = rr.section_top_blunders(agg)
     assert "Top blunders" in out
     assert "<svg" in out  # board from fen_before
@@ -188,18 +256,37 @@ def test_section_study_plan_ranks_phase_and_lists_drills():
     agg = {
         "avg_cpl_by_phase": {"opening": 30, "middlegame": 95, "endgame": 80},
         "blunders_by_phase": {
-            "opening": {"blunder": 2}, "middlegame": {"blunder": 10},
+            "opening": {"blunder": 2},
+            "middlegame": {"blunder": 10},
             "endgame": {"blunder": 7},
         },
         "opening_performance": [
-            {"opening": "Italian Game", "color": "black", "games": 3,
-             "win": 1, "loss": 2, "draw": 0, "avg_opening_cpl": 78.0},
-            {"opening": "Scotch Game", "color": "white", "games": 5,
-             "win": 5, "loss": 0, "draw": 0, "avg_opening_cpl": 39.0},
+            {
+                "opening": "Italian Game",
+                "color": "black",
+                "games": 3,
+                "win": 1,
+                "loss": 2,
+                "draw": 0,
+                "avg_opening_cpl": 78.0,
+            },
+            {
+                "opening": "Scotch Game",
+                "color": "white",
+                "games": 5,
+                "win": 5,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 39.0,
+            },
         ],
         "top_blunders": [
-            {"game_url": "https://chess.com/g/1", "move_no": 20, "san": "Qxf7",
-             "color": "white"},
+            {
+                "game_url": "https://chess.com/g/1",
+                "move_no": 20,
+                "san": "Qxf7",
+                "color": "white",
+            },
         ],
     }
     out = rr.section_study_plan(agg)
@@ -214,7 +301,9 @@ def test_section_study_plan_ranks_phase_and_lists_drills():
 
 
 def test_section_study_plan_injects_coach_notes_when_tips_given():
-    out = rr.section_study_plan({"avg_cpl_by_phase": {}}, tips_md="## Hi\n\nFocus here.")
+    out = rr.section_study_plan(
+        {"avg_cpl_by_phase": {}}, tips_md="## Hi\n\nFocus here."
+    )
     assert "Coach's notes" in out
     assert "Focus here." in out
 
@@ -222,3 +311,67 @@ def test_section_study_plan_injects_coach_notes_when_tips_given():
 def test_section_study_plan_no_coach_notes_without_tips():
     out = rr.section_study_plan({"avg_cpl_by_phase": {}})
     assert "Coach's notes" not in out
+
+
+def test_build_html_full_document_has_every_section():
+    agg = _min_agg()
+    agg["opening_performance"] = [
+        {
+            "opening": "Scotch Game",
+            "color": "white",
+            "games": 2,
+            "win": 2,
+            "loss": 0,
+            "draw": 0,
+            "avg_opening_cpl": 40.0,
+        },
+    ]
+    agg["top_blunders"] = [
+        {
+            "game_url": "https://chess.com/g/1",
+            "move_no": 20,
+            "san": "Qxf7",
+            "phase": "middlegame",
+            "color": "white",
+            "result": "loss",
+            "raw_swing": 2540,
+            "fen_before": __import__("chess").STARTING_FEN,
+        },
+    ]
+    games = [
+        {
+            "url": "https://chess.com/g/1",
+            "my_color": "white",
+            "opening": "Scotch Game",
+            "moves": [
+                {
+                    "move_no": 1,
+                    "phase": "opening",
+                    "eval_before": 30,
+                    "eval_after": 20,
+                    "class": None,
+                    "fen_before": __import__("chess").STARTING_FEN,
+                },
+                {
+                    "move_no": 20,
+                    "phase": "middlegame",
+                    "eval_before": 541,
+                    "eval_after": -1999,
+                    "class": "blunder",
+                    "fen_before": __import__("chess").STARTING_FEN,
+                },
+            ],
+        }
+    ]
+    html_out = rr.build_html(agg, games, tips_md="## Notes\n\nWatch your queen.")
+    for heading in (
+        "Charts",
+        "Where your blunders come from",
+        "Eval trajectory",
+        "Openings",
+        "Top blunders",
+        "Study plan",
+        "Coach's notes",
+    ):
+        assert heading in html_out, heading
+    assert html_out.strip().endswith("</html>")

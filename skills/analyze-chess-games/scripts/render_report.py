@@ -43,8 +43,13 @@ def _esc(s: object) -> str:
     return html.escape(str(s))
 
 
-def svg_bars(rows: list[tuple[str, float]], *, unit: str = "",
-             color: str = "#3b6ea5", width: int = 720) -> str:
+def svg_bars(
+    rows: list[tuple[str, float]],
+    *,
+    unit: str = "",
+    color: str = "#3b6ea5",
+    width: int = 720,
+) -> str:
     """Horizontal bar chart as inline SVG. rows = [(label, value), ...].
 
     Rows with a None value are skipped; zero values render a label with no bar.
@@ -63,9 +68,7 @@ def svg_bars(rows: list[tuple[str, float]], *, unit: str = "",
     for i, (label, v) in enumerate(rows):
         y = top + i * row_h
         cy = y + row_h // 2
-        parts.append(
-            f'<text x="0" y="{cy + 4}" font-size="13">{_esc(label)}</text>'
-        )
+        parts.append(f'<text x="0" y="{cy + 4}" font-size="13">{_esc(label)}</text>')
         bw = round(bar_area * v / max_v)
         if v > 0:
             bw = max(2, bw)
@@ -124,23 +127,29 @@ def section_charts(agg: dict) -> str:
         f"<td class='num'>{b.get('loss', 0)}</td><td class='num'>{b.get('draw', 0)}</td></tr>"
         "</table>"
     )
-    return "\n".join([
-        "<h2>Charts</h2>",
-        _chart("Results by color", svg_bars(results_rows)),
-        color_table,
-        _chart("Average centipawn loss by phase (lower is better)",
-               svg_bars(phase_rows, unit=" cpl", color="#a5563b")),
-        _chart("Move quality", svg_bars(mq_rows, color="#7a3ba5")),
-        _chart("Average centipawn loss — wins vs losses",
-               svg_bars(res_rows, unit=" cpl", color="#3b8aa5")),
-        "<h3>Time trouble</h3>",
-        '<ul class="muted">'
-        f"<li>Moves in time trouble: {tt.get('my_moves_in_time_trouble', 0)}</li>"
-        f"<li>Blunders in time trouble: {tt.get('blunders_in_time_trouble', 0)} "
-        f"({share_str} of all blunders)</li>"
-        f"<li>Losses with a time-trouble blunder: "
-        f"{tt.get('losses_with_time_trouble_blunder', 0)}</li></ul>",
-    ])
+    return "\n".join(
+        [
+            "<h2>Charts</h2>",
+            _chart("Results by color", svg_bars(results_rows)),
+            color_table,
+            _chart(
+                "Average centipawn loss by phase (lower is better)",
+                svg_bars(phase_rows, unit=" cpl", color="#a5563b"),
+            ),
+            _chart("Move quality", svg_bars(mq_rows, color="#7a3ba5")),
+            _chart(
+                "Average centipawn loss — wins vs losses",
+                svg_bars(res_rows, unit=" cpl", color="#3b8aa5"),
+            ),
+            "<h3>Time trouble</h3>",
+            '<ul class="muted">'
+            f"<li>Moves in time trouble: {tt.get('my_moves_in_time_trouble', 0)}</li>"
+            f"<li>Blunders in time trouble: {tt.get('blunders_in_time_trouble', 0)} "
+            f"({share_str} of all blunders)</li>"
+            f"<li>Losses with a time-trouble blunder: "
+            f"{tt.get('losses_with_time_trouble_blunder', 0)}</li></ul>",
+        ]
+    )
 
 
 def pov(color: str, cp: float) -> float:
@@ -174,14 +183,18 @@ def section_blunder_origin(games: list) -> str:
         (f"From equal (±1.5): {100 * b['equal'] // total}%", b["equal"]),
         (f"From losing (<-1.5): {100 * b['losing'] // total}%", b["losing"]),
     ]
-    return "\n".join([
-        "<h2>Where your blunders come from</h2>",
-        '<p class="muted">Each blunder bucketed by the engine eval (your point of '
-        "view) on the move just before it. Blunders thrown from winning or equal "
-        "positions are the ones you can most directly stop.</p>",
-        _chart("Blunders by position strength before the mistake",
-               svg_bars(rows, color="#b5482f")),
-    ])
+    return "\n".join(
+        [
+            "<h2>Where your blunders come from</h2>",
+            '<p class="muted">Each blunder bucketed by the engine eval (your point of '
+            "view) on the move just before it. Blunders thrown from winning or equal "
+            "positions are the ones you can most directly stop.</p>",
+            _chart(
+                "Blunders by position strength before the mistake",
+                svg_bars(rows, color="#b5482f"),
+            ),
+        ]
+    )
 
 
 def eval_series(game: dict) -> list:
@@ -190,8 +203,9 @@ def eval_series(game: dict) -> list:
     return [pov(color, m.get("eval_after", 0)) for m in game.get("moves", [])]
 
 
-def svg_sparkline(values: list, *, mark_index: int | None = None,
-                  width: int = 320, height: int = 70) -> str:
+def svg_sparkline(
+    values: list, *, mark_index: int | None = None, width: int = 320, height: int = 70
+) -> str:
     """A small eval line. y is clamped to ±1000cp so one blowup doesn't flatten it."""
     if not values:
         return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>'
@@ -234,8 +248,11 @@ def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
         g = by_url[url]
         series = eval_series(g)
         idx = next(
-            (i for i, m in enumerate(g.get("moves", []))
-             if m.get("move_no") == b.get("move_no")),
+            (
+                i
+                for i, m in enumerate(g.get("moves", []))
+                if m.get("move_no") == b.get("move_no")
+            ),
             None,
         )
         sep = ". " if b.get("color") == "white" else "..."
@@ -251,13 +268,15 @@ def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
             break
     if not cards:
         return ""
-    return "\n".join([
-        "<h2>Eval trajectory into your biggest blunders</h2>",
-        '<p class="muted">Your evaluation across each game (your point of view), '
-        "with the blunder marked. Look for whether the line was already sliding or "
-        "fell off a cliff in one move.</p>",
-        *cards,
-    ])
+    return "\n".join(
+        [
+            "<h2>Eval trajectory into your biggest blunders</h2>",
+            '<p class="muted">Your evaluation across each game (your point of view), '
+            "with the blunder marked. Look for whether the line was already sliding or "
+            "fell off a cliff in one move.</p>",
+            *cards,
+        ]
+    )
 
 
 def opening_position_fen(game: dict) -> str | None:
@@ -290,8 +309,10 @@ def _find_opening_game(games: list, opening: str, color: str) -> dict | None:
 def section_openings(agg: dict, games: list, limit: int = 8) -> str:
     ops = agg.get("opening_performance", [])
     if not ops:
-        return ("<h2>Openings</h2>"
-                "<p class='muted'>(no opening played 2+ times in this sample)</p>")
+        return (
+            "<h2>Openings</h2>"
+            "<p class='muted'>(no opening played 2+ times in this sample)</p>"
+        )
     cards = []
     for o in ops[:limit]:
         rec = f"{o['win']}-{o['loss']}-{o['draw']}"
@@ -302,7 +323,8 @@ def section_openings(agg: dict, games: list, limit: int = 8) -> str:
         fen = opening_position_fen(g) if g else None
         board = (
             f'<div class="board">{board_svg(fen, color=o["color"])}</div>'
-            if fen else ""
+            if fen
+            else ""
         )
         cards.append(
             '<div class="card">'
@@ -327,7 +349,8 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
         fen = b.get("fen_before")
         board = (
             f'<div class="board">{board_svg(fen, color=b.get("color", "white"))}</div>'
-            if fen else ""
+            if fen
+            else ""
         )
         url = b.get("game_url") or ""
         link = f'<a href="{_esc(url)}">replay on chess.com</a>' if url else ""
@@ -341,12 +364,14 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
             f"{_esc(b.get('result'))}</p>"
             f"<p>{link}</p></div></div>"
         )
-    return "\n".join([
-        "<h2>Top blunders</h2>",
-        '<p class="muted">The position is shown just before the move you played. '
-        "Try to find the move you should have made before clicking through.</p>",
-        *cards,
-    ])
+    return "\n".join(
+        [
+            "<h2>Top blunders</h2>",
+            '<p class="muted">The position is shown just before the move you played. '
+            "Try to find the move you should have made before clicking through.</p>",
+            *cards,
+        ]
+    )
 
 
 def md_to_html(text: str) -> str:
@@ -377,13 +402,20 @@ def md_to_html(text: str) -> str:
             flush_bullets()
             flush_para()
         elif line.startswith("### "):
-            flush_bullets(); flush_para(); blocks.append(f"<h4>{inline(line[4:])}</h4>")
+            flush_bullets()
+            flush_para()
+            blocks.append(f"<h4>{inline(line[4:])}</h4>")
         elif line.startswith("## "):
-            flush_bullets(); flush_para(); blocks.append(f"<h3>{inline(line[3:])}</h3>")
+            flush_bullets()
+            flush_para()
+            blocks.append(f"<h3>{inline(line[3:])}</h3>")
         elif line.startswith("# "):
-            flush_bullets(); flush_para(); blocks.append(f"<h3>{inline(line[2:])}</h3>")
+            flush_bullets()
+            flush_para()
+            blocks.append(f"<h3>{inline(line[2:])}</h3>")
         elif line.lstrip().startswith("- "):
-            flush_para(); bullets.append(inline(line.lstrip()[2:]))
+            flush_para()
+            bullets.append(inline(line.lstrip()[2:]))
         else:
             para.append(line)
     flush_bullets()
@@ -396,7 +428,8 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     if tips_md:
         parts.append(
             '<div class="card coach"><h3>Coach\'s notes</h3>'
-            + md_to_html(tips_md) + "</div>"
+            + md_to_html(tips_md)
+            + "</div>"
         )
 
     # 1. Rank phases by (avg CPL + blunder count) — biggest leak first.
@@ -418,7 +451,8 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
 
     # 2. Weak openings: losing record or opening CPL > 60.
     weak = [
-        o for o in agg.get("opening_performance", [])
+        o
+        for o in agg.get("opening_performance", [])
         if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
     ]
     if weak:
@@ -462,7 +496,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         section_study_plan(agg, tips_md),
     ]
     return (
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         "<title>Chess analysis</title>\n"

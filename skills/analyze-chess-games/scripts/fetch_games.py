@@ -144,7 +144,9 @@ def main() -> None:
         "--count", type=int, default=100, help="number of recent games (default 100)"
     )
     ap.add_argument(
-        "--out", default="chess-analysis", help="output directory (default ./chess-analysis)"
+        "--out",
+        default="chess-analysis",
+        help="output directory (default ./chess-analysis)",
     )
     args = ap.parse_args()
 
