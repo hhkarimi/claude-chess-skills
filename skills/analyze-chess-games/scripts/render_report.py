@@ -528,7 +528,10 @@ def section_openings(
             frames = game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
         else:
             frames = []
-        board = _board_html(frames, fen, o["color"])
+        # Openings are shown from White's side (standard opening-study convention,
+        # and consistent with the White-POV CP scores), regardless of which color
+        # the player had.
+        board = _board_html(frames, fen, "white")
         cards.append(
             '<div class="card">'
             f"<h3>{_esc(o['opening'])} <span class='muted'>"
@@ -540,8 +543,8 @@ def section_openings(
         )
     note = (
         '<p class="muted">Each board steps through the moves that define the '
-        "opening; the number after each move is the engine score in pawns from "
-        "White's point of view (+ = White is better).</p>"
+        "opening, shown from White's side; the number after each move is the engine "
+        "score in pawns from White's point of view (+ = White is better).</p>"
     )
     return "<h2>Openings</h2>\n" + note + "\n" + "\n".join(cards)
 

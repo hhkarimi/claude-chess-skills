@@ -808,3 +808,37 @@ def test_md_to_html_multiline_item_continuation():
 def test_md_to_html_unindented_text_after_list_starts_paragraph():
     out = rr.md_to_html("1. A\n\nDone now.")
     assert out == "<ol><li>A</li></ol><p>Done now.</p>"
+
+
+def test_section_openings_board_oriented_from_white_even_for_black():
+    import chess.svg
+
+    agg = {
+        "opening_performance": [
+            {
+                "opening": "X",
+                "color": "black",
+                "games": 2,
+                "win": 1,
+                "loss": 1,
+                "draw": 0,
+                "avg_opening_cpl": 30.0,
+            },
+        ]
+    }
+    games = [
+        {
+            "opening": "X",
+            "my_color": "black",
+            "url": "u",
+            "opening_line": [{"ply": 1, "san": "e4", "eval": 20}],
+            "moves": [],
+        }
+    ]
+    out = rr.section_openings(agg, games)
+    b = chess.Board()
+    b.push_san("e4")
+    white_svg = chess.svg.board(b, orientation=chess.WHITE, size=240, coordinates=False)
+    black_svg = chess.svg.board(b, orientation=chess.BLACK, size=240, coordinates=False)
+    assert white_svg in out  # opening board is White-oriented
+    assert black_svg not in out  # not flipped to the player's (Black) side
