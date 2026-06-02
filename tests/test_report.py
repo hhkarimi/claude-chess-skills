@@ -428,3 +428,58 @@ def test_opening_end_ply_falls_back_to_cap_when_unmatched():
 def test_blunder_ply_locates_move():
     assert rr._blunder_ply(_PGN, 3, "white", "Bb5") == 5
     assert rr._blunder_ply(_PGN, 3, "white", "Qh5") is None
+
+
+_OPEN_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *"
+
+
+def test_section_openings_interactive_when_pgn_present():
+    agg = {
+        "opening_performance": [
+            {"opening": "Ruy Lopez", "color": "white", "games": 2,
+             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+        ]
+    }
+    games = [{"opening": "Ruy Lopez", "my_color": "white", "url": "u1",
+              "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}]}]
+    out = rr.section_openings(agg, games, {"u1": _OPEN_PGN})
+    assert 'class="player' in out
+    assert out.count('class="frame"') >= 3
+
+
+def test_section_openings_falls_back_to_static_without_pgn():
+    agg = {
+        "opening_performance": [
+            {"opening": "Ruy Lopez", "color": "white", "games": 2,
+             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+        ]
+    }
+    games = [{"opening": "Ruy Lopez", "my_color": "white", "url": "u1",
+              "moves": [{"phase": "middlegame", "fen_before": chess.STARTING_FEN}]}]
+    out = rr.section_openings(agg, games)
+    assert "<svg" in out
+    assert 'class="player' not in out
+
+
+def test_section_top_blunders_interactive_when_pgn_present():
+    agg = {"top_blunders": [
+        {"game_url": "u1", "move_no": 3, "san": "Bb5", "phase": "opening",
+         "color": "white", "result": "loss", "raw_swing": 900,
+         "fen_before": chess.STARTING_FEN},
+    ]}
+    out = rr.section_top_blunders(agg, {"u1": _OPEN_PGN})
+    assert 'class="player' in out
+    assert "u1" in out
+
+
+def test_build_html_emits_board_script_once():
+    agg = _min_agg()
+    agg["top_blunders"] = [
+        {"game_url": "u1", "move_no": 3, "san": "Bb5", "phase": "opening",
+         "color": "white", "result": "loss", "raw_swing": 900,
+         "fen_before": chess.STARTING_FEN},
+    ]
+    raw = [{"url": "u1", "pgn": _OPEN_PGN}]
+    out = rr.build_html(agg, [], raw_games=raw)
+    assert out.count("function chessStep") == 1
+    assert 'class="player' in out

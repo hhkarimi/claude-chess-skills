@@ -449,7 +449,9 @@ def _find_opening_game(games: list, opening: str, color: str) -> dict | None:
     return None
 
 
-def section_openings(agg: dict, games: list, limit: int = 8) -> str:
+def section_openings(agg: dict, games: list, pgn_by_url: dict | None = None,
+                     limit: int = 8) -> str:
+    pgn_by_url = pgn_by_url or {}
     ops = agg.get("opening_performance", [])
     if not ops:
         return (
@@ -463,11 +465,13 @@ def section_openings(agg: dict, games: list, limit: int = 8) -> str:
         cpl_str = _cpl_str(o.get("avg_opening_cpl"))
         g = _find_opening_game(games, o["opening"], o["color"])
         fen = opening_position_fen(g) if g else None
-        board = (
-            f'<div class="board">{board_svg(fen, color=o["color"])}</div>'
-            if fen
-            else ""
-        )
+        pgn = pgn_by_url.get(g.get("url")) if g else None
+        board = ""
+        if pgn:
+            frames = game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
+            board = board_player(frames, orient=o["color"]) if frames else ""
+        if not board and fen:
+            board = f'<div class="board">{board_svg(fen, color=o["color"])}</div>'
         cards.append(
             '<div class="card">'
             f"<h3>{_esc(o['opening'])} <span class='muted'>"
@@ -480,20 +484,34 @@ def section_openings(agg: dict, games: list, limit: int = 8) -> str:
     return "<h2>Openings</h2>\n" + "\n".join(cards)
 
 
-def section_top_blunders(agg: dict, limit: int = 8) -> str:
+def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
+                         limit: int = 8) -> str:
+    pgn_by_url = pgn_by_url or {}
     blunders = agg.get("top_blunders", [])
     if not blunders:
         return "<h2>Top blunders</h2><p class='muted'>(no blunders found)</p>"
     cards = []
     for b in blunders[:limit]:
         move = _move_str(b)
-        fen = b.get("fen_before")
-        board = (
-            f'<div class="board">{board_svg(fen, color=b.get("color", "white"))}</div>'
-            if fen
-            else ""
-        )
         url = b.get("game_url") or ""
+        pgn = pgn_by_url.get(url)
+        board = ""
+        if pgn:
+            ply = _blunder_ply(pgn, b.get("move_no"), b.get("color"), b.get("san"))
+            if ply:
+                frames = game_frames(pgn, start_ply=max(1, ply - 4), end_ply=ply + 1)
+                board = (
+                    board_player(frames, orient=b.get("color", "white"))
+                    if frames
+                    else ""
+                )
+        if not board:
+            fen = b.get("fen_before")
+            if fen:
+                board = (
+                    f'<div class="board">'
+                    f'{board_svg(fen, color=b.get("color", "white"))}</div>'
+                )
         link = f'<a href="{_esc(url)}">replay on chess.com</a>' if url else ""
         cards.append(
             '<div class="card">'
@@ -508,8 +526,8 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
     return "\n".join(
         [
             "<h2>Top blunders</h2>",
-            '<p class="muted">The position is shown just before the move you played. '
-            "Try to find the move you should have made before clicking through.</p>",
+            '<p class="muted">Step through the last few moves into each blunder, '
+            "or open the game on chess.com.</p>",
             *cards,
         ]
     )
@@ -619,8 +637,10 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     return "\n".join(parts)
 
 
-def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
+def build_html(agg: dict, games: list, raw_games: list | None = None,
+               tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
+    pgn_by_url = {g.get("url"): g.get("pgn") for g in (raw_games or []) if g.get("pgn")}
     n = agg.get("games_analyzed", 0)
     acc = agg.get("chesscom_avg_accuracy")
     acc_str = f" · avg accuracy {acc}%" if acc is not None else ""
@@ -629,8 +649,8 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         section_charts(agg),
         section_blunder_origin(games),
         section_trajectories(agg, games),
-        section_openings(agg, games),
-        section_top_blunders(agg),
+        section_openings(agg, games, pgn_by_url),
+        section_top_blunders(agg, pgn_by_url),
         section_study_plan(agg, tips_md),
     ]
     return (
@@ -640,20 +660,28 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         "<title>Chess analysis</title>\n"
         f"<style>{STYLE}</style>\n</head>\n<body>\n"
         + "\n".join(body)
+        + "\n"
+        + BOARD_SCRIPT
         + "\n</body>\n</html>\n"
     )
 
 
-def load(in_dir: str) -> tuple[dict, list]:
-    """Read aggregate.json (summary) and analysis.json (per-move) from in_dir."""
+def load(in_dir: str) -> tuple[dict, list, list]:
+    """Read aggregate.json, analysis.json, and games.json (PGNs) from in_dir."""
     d = Path(in_dir)
     agg_file = d / "aggregate.json"
     ana_file = d / "analysis.json"
+    games_file = d / "games.json"
     if not agg_file.exists():
         raise SystemExit(f"{agg_file} not found — run analyze_games.py first.")
     agg = json.loads(agg_file.read_text())
     games = json.loads(ana_file.read_text()) if ana_file.exists() else []
-    return agg, games
+    raw_games = (
+        json.loads(games_file.read_text()).get("games", [])
+        if games_file.exists()
+        else []
+    )
+    return agg, games, raw_games
 
 
 def main() -> None:
@@ -664,10 +692,10 @@ def main() -> None:
     ap.add_argument("--tips", default=None, help="Markdown file of coaching prose")
     args = ap.parse_args()
 
-    agg, games = load(args.in_dir)
+    agg, games, raw_games = load(args.in_dir)
     tips_md = Path(args.tips).read_text() if args.tips else None
     out = Path(args.in_dir) / "report.html"
-    out.write_text(build_html(agg, games, tips_md))
+    out.write_text(build_html(agg, games, raw_games, tips_md))
     print(f"Wrote {out}")
 
 
