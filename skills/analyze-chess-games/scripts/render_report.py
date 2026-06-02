@@ -349,6 +349,104 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
     ])
 
 
+def md_to_html(text: str) -> str:
+    """Minimal Markdown -> HTML: #/##/### headings, '- ' bullets, blank-line
+    paragraphs, and **bold**. Everything is HTML-escaped first."""
+    import re
+
+    blocks, lines, bullets = [], text.splitlines(), []
+
+    def flush_bullets() -> None:
+        if bullets:
+            blocks.append("<ul>" + "".join(f"<li>{x}</li>" for x in bullets) + "</ul>")
+            bullets.clear()
+
+    def inline(s: str) -> str:
+        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _esc(s))
+
+    para: list[str] = []
+
+    def flush_para() -> None:
+        if para:
+            blocks.append("<p>" + " ".join(inline(p) for p in para) + "</p>")
+            para.clear()
+
+    for raw in lines:
+        line = raw.rstrip()
+        if not line.strip():
+            flush_bullets()
+            flush_para()
+        elif line.startswith("### "):
+            flush_bullets(); flush_para(); blocks.append(f"<h4>{inline(line[4:])}</h4>")
+        elif line.startswith("## "):
+            flush_bullets(); flush_para(); blocks.append(f"<h3>{inline(line[3:])}</h3>")
+        elif line.startswith("# "):
+            flush_bullets(); flush_para(); blocks.append(f"<h3>{inline(line[2:])}</h3>")
+        elif line.lstrip().startswith("- "):
+            flush_para(); bullets.append(inline(line.lstrip()[2:]))
+        else:
+            para.append(line)
+    flush_bullets()
+    flush_para()
+    return "\n".join(blocks)
+
+
+def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
+    parts = ["<h2>Study plan</h2>"]
+    if tips_md:
+        parts.append(
+            '<div class="card coach"><h3>Coach\'s notes</h3>'
+            + md_to_html(tips_md) + "</div>"
+        )
+
+    # 1. Rank phases by (avg CPL + blunder count) — biggest leak first.
+    cpl = agg.get("avg_cpl_by_phase", {})
+    bbp = agg.get("blunders_by_phase", {})
+    phases = []
+    for p in ("opening", "middlegame", "endgame"):
+        score = (cpl.get(p) or 0) + (bbp.get(p, {}).get("blunder", 0) * 10)
+        phases.append((p, score, cpl.get(p), bbp.get(p, {}).get("blunder", 0)))
+    phases.sort(key=lambda t: t[1], reverse=True)
+    phase_items = "".join(
+        f"<li><strong>{p.title()}</strong>: "
+        f"avg CPL {('-' if c is None else round(c))}, {bl} blunders</li>"
+        for p, _, c, bl in phases
+    )
+    parts.append(
+        "<h3>Phase priorities (worst leak first)</h3><ol>" + phase_items + "</ol>"
+    )
+
+    # 2. Weak openings: losing record or opening CPL > 60.
+    weak = [
+        o for o in agg.get("opening_performance", [])
+        if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
+    ]
+    if weak:
+        wk = "".join(
+            f"<li>{_esc(o['opening'])} ({_esc(o['color'])}): "
+            f"{o['win']}-{o['loss']}-{o['draw']}, "
+            f"opening CPL {('-' if o.get('avg_opening_cpl') is None else round(o['avg_opening_cpl']))}</li>"
+            for o in weak
+        )
+        parts.append("<h3>Openings to shore up</h3><ul>" + wk + "</ul>")
+
+    # 3. Concrete drills from the top blunders.
+    drills = agg.get("top_blunders", [])[:5]
+    if drills:
+        dl = "".join(
+            f'<li><a href="{_esc(b.get("game_url", ""))}">'
+            f"{b.get('move_no')}{'. ' if b.get('color') == 'white' else '...'}"
+            f"{_esc(b.get('san'))}</a></li>"
+            for b in drills
+        )
+        parts.append(
+            "<h3>Replay these positions</h3>"
+            '<p class="muted">Set each up and find the move you missed.</p>'
+            "<ul>" + dl + "</ul>"
+        )
+    return "\n".join(parts)
+
+
 def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
     n = agg.get("games_analyzed", 0)
@@ -361,6 +459,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         section_trajectories(agg, games),
         section_openings(agg, games),
         section_top_blunders(agg),
+        section_study_plan(agg, tips_md),
     ]
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"

@@ -170,3 +170,55 @@ def test_section_top_blunders_empty_is_graceful():
     out = rr.section_top_blunders({"top_blunders": []})
     assert "no blunders" in out.lower()
     assert "<svg" not in out
+
+
+def test_md_to_html_handles_headings_bullets_and_paragraphs():
+    out = rr.md_to_html("## Focus\n\nWork on tactics.\n\n- one\n- two")
+    assert "<h3>Focus</h3>" in out
+    assert "<p>Work on tactics.</p>" in out
+    assert "<li>one</li>" in out and "<li>two</li>" in out
+    assert "<ul>" in out
+
+
+def test_md_to_html_escapes_html():
+    assert "&lt;script&gt;" in rr.md_to_html("<script>")
+
+
+def test_section_study_plan_ranks_phase_and_lists_drills():
+    agg = {
+        "avg_cpl_by_phase": {"opening": 30, "middlegame": 95, "endgame": 80},
+        "blunders_by_phase": {
+            "opening": {"blunder": 2}, "middlegame": {"blunder": 10},
+            "endgame": {"blunder": 7},
+        },
+        "opening_performance": [
+            {"opening": "Italian Game", "color": "black", "games": 3,
+             "win": 1, "loss": 2, "draw": 0, "avg_opening_cpl": 78.0},
+            {"opening": "Scotch Game", "color": "white", "games": 5,
+             "win": 5, "loss": 0, "draw": 0, "avg_opening_cpl": 39.0},
+        ],
+        "top_blunders": [
+            {"game_url": "https://chess.com/g/1", "move_no": 20, "san": "Qxf7",
+             "color": "white"},
+        ],
+    }
+    out = rr.section_study_plan(agg)
+    assert "Study plan" in out
+    # middlegame has the worst CPL+blunders, so it should be the top priority
+    assert out.index("Middlegame") < out.index("Endgame")
+    # weak opening (losing record / high CPL) is flagged, strong one is not
+    assert "Italian Game" in out
+    assert "Scotch Game" not in out
+    # a concrete drill link is included
+    assert "https://chess.com/g/1" in out
+
+
+def test_section_study_plan_injects_coach_notes_when_tips_given():
+    out = rr.section_study_plan({"avg_cpl_by_phase": {}}, tips_md="## Hi\n\nFocus here.")
+    assert "Coach's notes" in out
+    assert "Focus here." in out
+
+
+def test_section_study_plan_no_coach_notes_without_tips():
+    out = rr.section_study_plan({"avg_cpl_by_phase": {}})
+    assert "Coach's notes" not in out
