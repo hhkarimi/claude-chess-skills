@@ -48,8 +48,8 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 4. **`render_report.py`** — an optional, additive renderer (PEP 723 dep:
    `python-chess` for `chess.svg` board diagrams) that turns `aggregate.json` +
    `analysis.json` into a single self-contained `report.html`: inline CSS,
-   hand-rolled inline SVG charts, per-opening board figures, blunder-origin and
-   eval-trajectory visualizations, and a data-driven study plan (with an optional
+   hand-rolled inline SVG charts, per-opening board figures, a blunder-origin
+   chart with per-blunder eval-swing sparklines, and a data-driven study plan (with an optional
    `--tips` Markdown slot for Claude-authored coaching). `render_charts.py` stays
    stdlib-only; the HTML renderer is the only place `python-chess` is needed for
    presentation. It also reads `games.json` (full PGN) to build click-through board steppers for

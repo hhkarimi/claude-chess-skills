@@ -82,7 +82,8 @@ dependencies.
 ### 5. Render the HTML report (optional, richer)
 
 Generate a self-contained HTML report with SVG charts, per-opening board
-diagrams, blunder-origin and eval-trajectory visualizations, and a study plan:
+diagrams, a blunder-origin chart and per-blunder eval-swing sparklines, and a
+study plan:
 
 ```bash
 uv run scripts/render_report.py [--in ./chess-analysis] [--tips tips.md]

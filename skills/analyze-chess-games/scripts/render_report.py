@@ -621,9 +621,9 @@ def section_practice(agg: dict) -> str:
         reverse=True,
     )
     items = [
-        '<li><a href="https://lichess.org/training">Lichess puzzles</a> — most of '
-        "your blunders come from winning positions, so daily puzzles build the "
-        "habit of checking your opponent's reply before you move.</li>"
+        '<li><a href="https://lichess.org/training">Lichess puzzles</a> — daily '
+        "tactics build the habit of checking your opponent's reply before you "
+        "move, which is where most blunders are avoided.</li>"
     ]
     if "endgame" in ranked[:2]:
         items.append(
@@ -638,7 +638,11 @@ def section_practice(agg: dict) -> str:
     ]
     if weak:
         worst = sorted(
-            weak, key=lambda o: (o["win"] - o["loss"], -(o.get("avg_opening_cpl") or 0))
+            weak,
+            key=lambda o: (
+                o.get("win", 0) - o.get("loss", 0),
+                -(o.get("avg_opening_cpl") or 0),
+            ),
         )[0]
         items.append(
             '<li><a href="https://lichess.org/opening">Lichess opening explorer</a> '
