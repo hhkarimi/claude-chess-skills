@@ -149,3 +149,24 @@ def test_section_openings_empty_is_graceful():
     out = rr.section_openings({"opening_performance": []}, [])
     assert "no opening" in out.lower()
     assert "<svg" not in out
+
+
+def test_section_top_blunders_renders_boards_and_links():
+    import chess
+    agg = {"top_blunders": [
+        {"game_url": "https://chess.com/g/1", "move_no": 20, "san": "Qxf7",
+         "phase": "middlegame", "color": "white", "result": "loss",
+         "raw_swing": 2540, "fen_before": chess.STARTING_FEN},
+    ]}
+    out = rr.section_top_blunders(agg)
+    assert "Top blunders" in out
+    assert "<svg" in out  # board from fen_before
+    assert "20. Qxf7" in out
+    assert "https://chess.com/g/1" in out
+    assert "2540" in out
+
+
+def test_section_top_blunders_empty_is_graceful():
+    out = rr.section_top_blunders({"top_blunders": []})
+    assert "no blunders" in out.lower()
+    assert "<svg" not in out

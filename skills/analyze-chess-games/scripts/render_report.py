@@ -316,6 +316,39 @@ def section_openings(agg: dict, games: list, limit: int = 8) -> str:
     return "<h2>Openings</h2>\n" + "\n".join(cards)
 
 
+def section_top_blunders(agg: dict, limit: int = 8) -> str:
+    blunders = agg.get("top_blunders", [])
+    if not blunders:
+        return "<h2>Top blunders</h2><p class='muted'>(no blunders found)</p>"
+    cards = []
+    for b in blunders[:limit]:
+        sep = ". " if b.get("color") == "white" else "..."
+        move = f"{b.get('move_no')}{sep}{b.get('san')}"
+        fen = b.get("fen_before")
+        board = (
+            f'<div class="board">{board_svg(fen, color=b.get("color", "white"))}</div>'
+            if fen else ""
+        )
+        url = b.get("game_url") or ""
+        link = f'<a href="{_esc(url)}">replay on chess.com</a>' if url else ""
+        cards.append(
+            '<div class="card">'
+            f"<h3>{_esc(move)} "
+            f"<span class='muted'>· swing {_esc(b.get('raw_swing'))}cp</span></h3>"
+            f"{board}"
+            "<div>"
+            f"<p>{_esc(b.get('phase'))} · {_esc(b.get('color'))} · "
+            f"{_esc(b.get('result'))}</p>"
+            f"<p>{link}</p></div></div>"
+        )
+    return "\n".join([
+        "<h2>Top blunders</h2>",
+        '<p class="muted">The position is shown just before the move you played. '
+        "Try to find the move you should have made before clicking through.</p>",
+        *cards,
+    ])
+
+
 def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
     n = agg.get("games_analyzed", 0)
@@ -327,6 +360,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         section_blunder_origin(games),
         section_trajectories(agg, games),
         section_openings(agg, games),
+        section_top_blunders(agg),
     ]
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
