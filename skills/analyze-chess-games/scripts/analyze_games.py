@@ -93,6 +93,18 @@ def clamp_eval(cp: int) -> int:
     return max(-EVAL_CAP, min(EVAL_CAP, cp))
 
 
+def load_book(path) -> set:
+    """Load the vendored opening-position EPD set; missing file -> empty set."""
+    p = Path(path)
+    if not p.exists():
+        return set()
+    return {
+        line.strip()
+        for line in p.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
+
 def phase_of(board: chess.Board) -> str:
     """Classify the position as opening / middlegame / endgame.
 

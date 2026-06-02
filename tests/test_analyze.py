@@ -132,3 +132,21 @@ def test_build_aggregate_opening_needs_two_games():
     per_game = [_game("white", "win", "Rare Line", [_move(10, "opening")])]
     agg = az.build_aggregate(per_game)
     assert agg["opening_performance"] == []
+
+
+def test_load_book_parses_epds_and_skips_comments(tmp_path):
+    f = tmp_path / "book.txt"
+    f.write_text(
+        "# a comment\n"
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -\n"
+        "\n"
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -\n"
+    )
+    book = az.load_book(f)
+    assert isinstance(book, set)
+    assert len(book) == 2
+    assert "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" in book
+
+
+def test_load_book_missing_file_is_empty_set(tmp_path):
+    assert az.load_book(tmp_path / "nope.txt") == set()
