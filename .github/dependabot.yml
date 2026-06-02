@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+# Note: Python dependencies live in PEP 723 inline script metadata
+# (e.g. `# /// script ... # ///` blocks). Dependabot does not yet parse this
+# format. Track upstream support: https://github.com/dependabot/dependabot-core/issues/9265

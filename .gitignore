@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.uv/
+.DS_Store
+/tmp/
+games*.json
+analysis*.json
+aggregate*.json
+*.pgn
+!tests/fixtures/*.json
+!tests/fixtures/*.pgn
