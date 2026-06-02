@@ -150,3 +150,26 @@ def test_load_book_parses_epds_and_skips_comments(tmp_path):
 
 def test_load_book_missing_file_is_empty_set(tmp_path):
     assert az.load_book(tmp_path / "nope.txt") == set()
+
+
+def test_opening_line_truncates_at_deepest_in_book_ply():
+    book = {"EPD_A", "EPD_B"}  # plies 1 and 2 in book, ply 3 out
+    records = [
+        ("e4", "EPD_A", 20),
+        ("e5", "EPD_B", 10),
+        ("Qh5", "EPD_OUT", -300),
+    ]
+    line = az.opening_line(records, book)
+    assert [e["san"] for e in line] == ["e4", "e5"]
+    assert [e["ply"] for e in line] == [1, 2]
+    assert line[0]["eval"] == 20
+
+
+def test_opening_line_empty_when_no_book_match():
+    assert az.opening_line([("a3", "EPD_X", 0)], {"EPD_Y"}) == []
+
+
+def test_opening_line_clamps_eval():
+    big = az.EVAL_CAP + 5000
+    line = az.opening_line([("e4", "EPD_A", big)], {"EPD_A"})
+    assert line[0]["eval"] == az.EVAL_CAP
