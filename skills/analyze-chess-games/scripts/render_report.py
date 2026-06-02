@@ -82,6 +82,11 @@ def _cpl_str(cpl: float | None) -> str:
     return f"{cpl:.0f}" if cpl is not None else "-"
 
 
+def _cp_pawns(cp_white: int) -> str:
+    """Format a White-POV centipawn score as signed pawns, e.g. +0.3 / -1.2."""
+    return f"{cp_white / 100:+.1f}"
+
+
 GLOSSARY = {
     "cpl": (
         "CPL",
@@ -385,6 +390,29 @@ def board_player(frames: list, *, orient: str = "white", size: int = 240) -> str
     )
 
 
+def opening_frames(opening_line: list) -> list:
+    """Frames for an opening stepper from analysis.json's opening_line.
+
+    Replays the SANs from the start position; each move frame's caption is the
+    move plus its White-POV CP score. Returns [(fen, caption)]; stops early on an
+    unreplayable SAN.
+    """
+    board = chess.Board()
+    frames = [(board.fen(), "start")]
+    for entry in opening_line:
+        san = entry.get("san", "")
+        num = board.fullmove_number
+        sep = ". " if board.turn == chess.WHITE else "..."
+        try:
+            board.push_san(san)
+        except ValueError:
+            break
+        frames.append(
+            (board.fen(), f"{num}{sep}{san}  {_cp_pawns(entry.get('eval', 0))}")
+        )
+    return frames
+
+
 def game_frames(pgn: str, *, start_ply: int, end_ply: int) -> list:
     """Replay PGN and return [(fen, caption)] for plies in [start_ply, end_ply].
 
@@ -488,12 +516,14 @@ def section_openings(
         cpl_str = _cpl_str(o.get("avg_opening_cpl"))
         g = _find_opening_game(games, o["opening"], o["color"])
         fen = opening_position_fen(g) if g else None
+        ol = g.get("opening_line") if g else None
         pgn = pgn_by_url.get(g.get("url")) if g else None
-        frames = (
-            game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
-            if pgn
-            else []
-        )
+        if ol:
+            frames = opening_frames(ol)
+        elif pgn:
+            frames = game_frames(pgn, start_ply=0, end_ply=_opening_end_ply(pgn, fen))
+        else:
+            frames = []
         board = _board_html(frames, fen, o["color"])
         cards.append(
             '<div class="card">'
@@ -504,7 +534,12 @@ def section_openings(
             f"<p>Record: <strong>{_esc(rec)}</strong> · Win rate: {_esc(wr)} · "
             f"Opening {_term('cpl')}: {_esc(cpl_str)}</p></div></div>"
         )
-    return "<h2>Openings</h2>\n" + "\n".join(cards)
+    note = (
+        '<p class="muted">Each board steps through the moves that define the '
+        "opening; the number after each move is the engine score in pawns from "
+        "White's point of view (+ = White is better).</p>"
+    )
+    return "<h2>Openings</h2>\n" + note + "\n" + "\n".join(cards)
 
 
 def section_top_blunders(

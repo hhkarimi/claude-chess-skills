@@ -657,3 +657,56 @@ def test_build_html_v2_full_document():
         assert needle in out, needle
     assert out.count("function chessStep") == 1
     assert out.strip().endswith("</html>")
+
+
+def test_cp_pawns_signed_one_decimal():
+    assert rr._cp_pawns(30) == "+0.3"
+    assert rr._cp_pawns(-120) == "-1.2"
+    assert rr._cp_pawns(0) == "+0.0"
+
+
+def test_opening_frames_start_plus_moves_with_cp_captions():
+    ol = [
+        {"ply": 1, "san": "e4", "eval": 20},
+        {"ply": 2, "san": "e5", "eval": 10},
+        {"ply": 3, "san": "Nf3", "eval": 30},
+    ]
+    frames = rr.opening_frames(ol)
+    caps = [c for _, c in frames]
+    assert caps[0] == "start"
+    assert caps[1] == "1. e4  +0.2"
+    assert caps[2] == "1...e5  +0.1"
+    assert caps[3] == "2. Nf3  +0.3"
+
+
+def test_section_openings_uses_opening_line_with_cp():
+    agg = {
+        "opening_performance": [
+            {"opening": "Scotch Game", "color": "white", "games": 2,
+             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+        ]
+    }
+    games = [{"opening": "Scotch Game", "my_color": "white", "url": "u1",
+              "opening_line": [
+                  {"ply": 1, "san": "e4", "eval": 20},
+                  {"ply": 2, "san": "e5", "eval": 15},
+                  {"ply": 3, "san": "Nf3", "eval": 25}],
+              "moves": []}]
+    out = rr.section_openings(agg, games)
+    assert 'class="player' in out
+    assert "+0.2" in out
+    assert "White's point of view" in out
+
+
+def test_section_openings_falls_back_without_opening_line():
+    agg = {
+        "opening_performance": [
+            {"opening": "Scotch Game", "color": "white", "games": 2,
+             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+        ]
+    }
+    games = [{"opening": "Scotch Game", "my_color": "white", "url": "u1",
+              "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}]}]
+    out = rr.section_openings(agg, games)
+    assert "<svg" in out
+    assert "+0." not in out
