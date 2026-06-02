@@ -15,6 +15,7 @@ Usage:
 import argparse
 import html
 import json
+import re
 from pathlib import Path
 
 import chess
@@ -41,6 +42,17 @@ svg { max-width: 100%; height: auto; }
 
 def _esc(s: object) -> str:
     return html.escape(str(s))
+
+
+def _move_str(b: dict) -> str:
+    """Format a blunder's move like White '20. Qxf7' or Black '20...Qxf7'."""
+    sep = ". " if b.get("color") == "white" else "..."
+    return f"{b.get('move_no')}{sep}{b.get('san')}"
+
+
+def _cpl_str(cpl: float | None) -> str:
+    """Centipawn-loss value rounded for display, or '-' when absent."""
+    return f"{cpl:.0f}" if cpl is not None else "-"
 
 
 def svg_bars(
@@ -256,8 +268,7 @@ def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
             ),
             None,
         )
-        sep = ". " if b.get("color") == "white" else "..."
-        move = f"{b.get('move_no')}{sep}{b.get('san')}"
+        move = _move_str(b)
         link = f'<a href="{_esc(url)}">replay</a>' if url else ""
         cards.append(
             '<div class="card">'
@@ -318,8 +329,7 @@ def section_openings(agg: dict, games: list, limit: int = 8) -> str:
     for o in ops[:limit]:
         rec = f"{o['win']}-{o['loss']}-{o['draw']}"
         wr = f"{100 * o['win'] / o['games']:.0f}%" if o.get("games") else "-"
-        cpl = o.get("avg_opening_cpl")
-        cpl_str = f"{cpl:.0f}" if cpl is not None else "-"
+        cpl_str = _cpl_str(o.get("avg_opening_cpl"))
         g = _find_opening_game(games, o["opening"], o["color"])
         fen = opening_position_fen(g) if g else None
         board = (
@@ -345,8 +355,7 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
         return "<h2>Top blunders</h2><p class='muted'>(no blunders found)</p>"
     cards = []
     for b in blunders[:limit]:
-        sep = ". " if b.get("color") == "white" else "..."
-        move = f"{b.get('move_no')}{sep}{b.get('san')}"
+        move = _move_str(b)
         fen = b.get("fen_before")
         board = (
             f'<div class="board">{board_svg(fen, color=b.get("color", "white"))}</div>'
@@ -378,8 +387,6 @@ def section_top_blunders(agg: dict, limit: int = 8) -> str:
 def md_to_html(text: str) -> str:
     """Minimal Markdown -> HTML: #/##/### headings, '- ' bullets, blank-line
     paragraphs, and **bold**. Everything is HTML-escaped first."""
-    import re
-
     blocks, lines, bullets = [], text.splitlines(), []
 
     def flush_bullets() -> None:
@@ -438,8 +445,9 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     bbp = agg.get("blunders_by_phase", {})
     phases = []
     for p in ("opening", "middlegame", "endgame"):
-        score = (cpl.get(p) or 0) + (bbp.get(p, {}).get("blunder", 0) * 10)
-        phases.append((p, score, cpl.get(p), bbp.get(p, {}).get("blunder", 0)))
+        bl = bbp.get(p, {}).get("blunder", 0)
+        score = (cpl.get(p) or 0) + (bl * 10)
+        phases.append((p, score, cpl.get(p), bl))
     phases.sort(key=lambda t: t[1], reverse=True)
     phase_items = "".join(
         f"<li><strong>{p.title()}</strong>: "
@@ -460,7 +468,7 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
         wk = "".join(
             f"<li>{_esc(o['opening'])} ({_esc(o['color'])}): "
             f"{o['win']}-{o['loss']}-{o['draw']}, "
-            f"opening CPL {('-' if o.get('avg_opening_cpl') is None else round(o['avg_opening_cpl']))}</li>"
+            f"opening CPL {_cpl_str(o.get('avg_opening_cpl'))}</li>"
             for o in weak
         )
         parts.append("<h3>Openings to shore up</h3><ul>" + wk + "</ul>")
@@ -469,9 +477,7 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     drills = agg.get("top_blunders", [])[:5]
     if drills:
         dl = "".join(
-            f'<li><a href="{_esc(b.get("game_url", ""))}">'
-            f"{b.get('move_no')}{'. ' if b.get('color') == 'white' else '...'}"
-            f"{_esc(b.get('san'))}</a></li>"
+            f'<li><a href="{_esc(b.get("game_url", ""))}">{_esc(_move_str(b))}</a></li>'
             for b in drills
         )
         parts.append(

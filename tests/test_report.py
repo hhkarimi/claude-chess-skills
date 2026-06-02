@@ -1,5 +1,7 @@
 """Unit tests for render_report HTML generation (no engine run, no network)."""
 
+import chess
+
 import render_report as rr
 
 
@@ -169,8 +171,6 @@ def test_opening_position_fen_all_opening_uses_last():
 
 
 def test_board_svg_renders_real_svg_from_startpos():
-    import chess
-
     svg = rr.board_svg(chess.STARTING_FEN, color="white")
     assert "<svg" in svg
 
@@ -189,7 +189,6 @@ def test_section_openings_includes_board_when_game_matches():
             },
         ]
     }
-    import chess
 
     games = [
         {
@@ -214,8 +213,6 @@ def test_section_openings_empty_is_graceful():
 
 
 def test_section_top_blunders_renders_boards_and_links():
-    import chess
-
     agg = {
         "top_blunders": [
             {
@@ -339,7 +336,7 @@ def test_build_html_full_document_has_every_section():
             "color": "white",
             "result": "loss",
             "raw_swing": 2540,
-            "fen_before": __import__("chess").STARTING_FEN,
+            "fen_before": chess.STARTING_FEN,
         },
     ]
     games = [
@@ -354,7 +351,7 @@ def test_build_html_full_document_has_every_section():
                     "eval_before": 30,
                     "eval_after": 20,
                     "class": None,
-                    "fen_before": __import__("chess").STARTING_FEN,
+                    "fen_before": chess.STARTING_FEN,
                 },
                 {
                     "move_no": 20,
@@ -362,7 +359,7 @@ def test_build_html_full_document_has_every_section():
                     "eval_before": 541,
                     "eval_after": -1999,
                     "class": "blunder",
-                    "fen_before": __import__("chess").STARTING_FEN,
+                    "fen_before": chess.STARTING_FEN,
                 },
             ],
         }
