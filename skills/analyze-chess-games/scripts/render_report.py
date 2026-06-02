@@ -37,7 +37,32 @@ th { background: #f4f4f4; }
 .coach { background: #fffdf2; border-color: #e9dca0; }
 .muted { color: #666; }
 svg { max-width: 100%; height: auto; }
+.term { text-decoration: underline dotted; cursor: help; }
+.term a { color: inherit; text-decoration: none; }
+.player { display: inline-block; vertical-align: top; margin: 4px 12px 4px 0; }
+.player .controls { margin-top: 4px; text-align: center; }
+.player .controls button { font-size: 14px; margin: 0 2px; cursor: pointer; }
+.player .cap { display: inline-block; min-width: 6em; font-variant-numeric: tabular-nums; }
+.glossary dt { font-weight: 600; margin-top: 6px; }
 """
+
+
+BOARD_SCRIPT = """<script>
+function chessStep(id, step) {
+  var w = document.getElementById(id);
+  var frames = w.querySelectorAll('.frame');
+  var n = frames.length;
+  var i = parseInt(w.dataset.idx, 10) || 0;
+  if (step === 'first') i = 0;
+  else if (step === 'last') i = n - 1;
+  else i = Math.max(0, Math.min(n - 1, i + step));
+  for (var k = 0; k < n; k++) { frames[k].hidden = (k !== i); }
+  w.dataset.idx = i;
+  w.querySelector('.cap').textContent = frames[i].getAttribute('data-cap');
+}
+</script>"""
+
+_widget_seq = 0
 
 
 def _esc(s: object) -> str:
@@ -308,6 +333,40 @@ def board_svg(fen: str, *, color: str = "white", size: int = 240) -> str:
     orientation = chess.WHITE if color == "white" else chess.BLACK
     return chess.svg.board(
         chess.Board(fen), orientation=orientation, size=size, coordinates=False
+    )
+
+
+def board_player(frames: list, *, orient: str = "white", size: int = 240) -> str:
+    """Interactive stepper from frames=[(fen, caption), ...]. Empty list -> ''.
+
+    Pre-renders one inline SVG per frame; only the first is visible. The shared
+    BOARD_SCRIPT (emitted once by build_html) steps between frames. Self-contained.
+    """
+    global _widget_seq
+    if not frames:
+        return ""
+    _widget_seq += 1
+    wid = f"bp{_widget_seq}"
+    orientation = chess.WHITE if orient == "white" else chess.BLACK
+    divs = []
+    for i, (fen, cap) in enumerate(frames):
+        svg = chess.svg.board(
+            chess.Board(fen), orientation=orientation, size=size, coordinates=False
+        )
+        hidden = "" if i == 0 else " hidden"
+        divs.append(f'<div class="frame"{hidden} data-cap="{_esc(cap)}">{svg}</div>')
+    controls = (
+        '<div class="controls">'
+        f"<button onclick=\"chessStep('{wid}','first')\">&#9198;</button>"
+        f"<button onclick=\"chessStep('{wid}',-1)\">&#9664;</button>"
+        f'<span class="cap">{_esc(frames[0][1])}</span>'
+        f"<button onclick=\"chessStep('{wid}',1)\">&#9654;</button>"
+        f"<button onclick=\"chessStep('{wid}','last')\">&#9197;</button>"
+        "</div>"
+    )
+    return (
+        f'<div class="player board" id="{wid}" data-idx="0">'
+        f'<div class="frames">{"".join(divs)}</div>{controls}</div>'
     )
 
 

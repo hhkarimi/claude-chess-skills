@@ -376,3 +376,24 @@ def test_build_html_full_document_has_every_section():
     ):
         assert heading in html_out, heading
     assert html_out.strip().endswith("</html>")
+
+
+def test_board_player_one_visible_frame_and_controls():
+    frames = [(chess.STARTING_FEN, "start"), (chess.STARTING_FEN, "1. e4")]
+    out = rr.board_player(frames)
+    assert out.count('class="frame"') == 2
+    assert out.count("hidden") == 1  # all but the first frame hidden
+    assert out.count("<button") == 4
+    assert 'data-cap="start"' in out
+
+
+def test_board_player_unique_ids_across_calls():
+    import re as _re
+    f = [(chess.STARTING_FEN, "start")]
+    id1 = _re.search(r'id="(bp\d+)"', rr.board_player(f)).group(1)
+    id2 = _re.search(r'id="(bp\d+)"', rr.board_player(f)).group(1)
+    assert id1 != id2
+
+
+def test_board_player_empty_is_blank():
+    assert rr.board_player([]) == ""
