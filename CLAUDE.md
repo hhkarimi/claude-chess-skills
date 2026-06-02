@@ -45,6 +45,15 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
    chess.com game links from `top_blunders`** — they're the user's payoff: a tip
    they can't replay is half a tip.
 
+4. **`render_report.py`** — an optional, additive renderer (PEP 723 dep:
+   `python-chess` for `chess.svg` board diagrams) that turns `aggregate.json` +
+   `analysis.json` into a single self-contained `report.html`: inline CSS,
+   hand-rolled inline SVG charts, per-opening board figures, blunder-origin and
+   eval-trajectory visualizations, and a data-driven study plan (with an optional
+   `--tips` Markdown slot for Claude-authored coaching). `render_charts.py` stays
+   stdlib-only; the HTML renderer is the only place `python-chess` is needed for
+   presentation.
+
 ### Key invariants
 
 - **CPL math**: evals are clamped to ±`EVAL_CAP` (mate included) so one
@@ -64,6 +73,7 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 cd skills/analyze-chess-games/scripts
 uv run fetch_games.py <username> --count 100    # fetch
 uv run analyze_games.py --depth 12              # analyze
+uv run render_report.py --in ./chess-analysis   # self-contained HTML report
 
 # from repo root — same checks CI runs
 uvx ruff check .
