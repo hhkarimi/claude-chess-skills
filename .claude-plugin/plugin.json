@@ -1,6 +1,6 @@
 {
   "name": "chess-skills",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Analyze your recent chess.com games with Stockfish and turn them into specific, prioritized improvement tips. Includes a chess.com game fetcher and an engine-backed analyzer.",
   "author": {
     "name": "hhkarimi"
