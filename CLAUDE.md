@@ -62,7 +62,7 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 
 ```bash
 cd skills/analyze-chess-games/scripts
-uv run fetch_games.py <username> --count 50     # fetch
+uv run fetch_games.py <username> --count 100    # fetch
 uv run analyze_games.py --depth 12              # analyze
 
 # from repo root — same checks CI runs

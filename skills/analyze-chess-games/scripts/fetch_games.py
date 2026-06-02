@@ -6,11 +6,11 @@
 
 No authentication required — the API serves public game archives. We resolve the
 player's monthly archive list, walk it newest-first, and collect games until we
-have the requested count (default 50). Output is a single games.json the analyzer
+have the requested count (default 100). Output is a single games.json the analyzer
 consumes.
 
 Usage:
-    uv run fetch_games.py <username> [--count 50] [--out /tmp/chess]
+    uv run fetch_games.py <username> [--count 100] [--out /tmp/chess]
 
 The username is a CLI argument and is never stored on disk beyond the output
 files (which .gitignore excludes). Pass it fresh each run.
@@ -141,7 +141,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("username", help="chess.com username (exact)")
     ap.add_argument(
-        "--count", type=int, default=50, help="number of recent games (default 50)"
+        "--count", type=int, default=100, help="number of recent games (default 100)"
     )
     ap.add_argument(
         "--out", default="/tmp/chess", help="output directory (default /tmp/chess)"
