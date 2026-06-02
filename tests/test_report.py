@@ -778,3 +778,17 @@ def test_svg_bars_widens_label_column_for_long_labels():
     short_x = int(re.search(r'<rect x="(\d+)"', short_svg).group(1))
     assert short_x == 130  # short labels keep the default column
     assert long_x > 150  # long label pushes the bar clear of the text
+
+
+def test_md_to_html_numbered_list_renders_ol():
+    out = rr.md_to_html("1. first\n2. second\n3. third")
+    assert "<ol>" in out
+    assert "<li>first</li>" in out
+    assert "<li>third</li>" in out
+    assert "<ul>" not in out
+
+
+def test_md_to_html_bullets_and_numbered_are_separate_lists():
+    out = rr.md_to_html("- a\n- b\n\n1. one\n2. two")
+    assert "<ul><li>a</li><li>b</li></ul>" in out
+    assert "<ol><li>one</li><li>two</li></ol>" in out

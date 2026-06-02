@@ -602,51 +602,63 @@ def section_top_blunders(
 
 
 def md_to_html(text: str) -> str:
-    """Minimal Markdown -> HTML: #/##/### headings, '- ' bullets, blank-line
-    paragraphs, and **bold**. Everything is HTML-escaped first."""
-    blocks, lines, bullets = [], text.splitlines(), []
+    """Minimal Markdown -> HTML: #/##/### headings, '- ' bullets, '1.' numbered
+    lists, blank-line paragraphs, and **bold**. Everything is HTML-escaped first."""
+    blocks, lines = [], text.splitlines()
+    bullets: list[str] = []
+    ordered: list[str] = []
+    para: list[str] = []
+
+    def inline(s: str) -> str:
+        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _esc(s))
 
     def flush_bullets() -> None:
         if bullets:
             blocks.append("<ul>" + "".join(f"<li>{x}</li>" for x in bullets) + "</ul>")
             bullets.clear()
 
-    def inline(s: str) -> str:
-        return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _esc(s))
-
-    para: list[str] = []
+    def flush_ordered() -> None:
+        if ordered:
+            blocks.append("<ol>" + "".join(f"<li>{x}</li>" for x in ordered) + "</ol>")
+            ordered.clear()
 
     def flush_para() -> None:
         if para:
             blocks.append("<p>" + " ".join(inline(p) for p in para) + "</p>")
             para.clear()
 
+    def flush_all() -> None:
+        flush_bullets()
+        flush_ordered()
+        flush_para()
+
     # Headings are intentionally demoted (# and ## -> h3, ### -> h4) so coaching
     # prose never outranks the report's own <h2> section titles.
     for raw in lines:
         line = raw.rstrip()
+        stripped = line.lstrip()
         if not line.strip():
-            flush_bullets()
-            flush_para()
+            flush_all()
         elif line.startswith("### "):
-            flush_bullets()
-            flush_para()
+            flush_all()
             blocks.append(f"<h4>{inline(line[4:])}</h4>")
         elif line.startswith("## "):
-            flush_bullets()
-            flush_para()
+            flush_all()
             blocks.append(f"<h3>{inline(line[3:])}</h3>")
         elif line.startswith("# "):
+            flush_all()
+            blocks.append(f"<h3>{inline(line[2:])}</h3>")
+        elif stripped.startswith("- "):
+            flush_ordered()
+            flush_para()
+            bullets.append(inline(stripped[2:]))
+        elif re.match(r"\d+\.\s", stripped):
             flush_bullets()
             flush_para()
-            blocks.append(f"<h3>{inline(line[2:])}</h3>")
-        elif line.lstrip().startswith("- "):
-            flush_para()
-            bullets.append(inline(line.lstrip()[2:]))
+            ordered.append(inline(re.sub(r"^\d+\.\s+", "", stripped)))
         else:
             para.append(line)
-    flush_bullets()
-    flush_para()
+    flush_all()
     return "\n".join(blocks)
 
 
