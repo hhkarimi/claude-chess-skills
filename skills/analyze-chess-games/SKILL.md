@@ -40,7 +40,7 @@ Pass it as a CLI argument every run. Do not hardcode or commit it.
 PEP 723 inline-deps Python — run with `uv run`. Default output dir is `/tmp/chess/`.
 
 ```bash
-uv run scripts/fetch_games.py <username> [--count 50] [--out /tmp/chess]
+uv run scripts/fetch_games.py <username> [--count 100] [--out /tmp/chess]
 ```
 
 Writes `games.json` (`{username, count, games: [...]}`). Each game carries the
@@ -61,7 +61,7 @@ Writes:
   phase, time-trouble flag, eval before/after, FEN).
 - `aggregate.json` — the summary you build the report from.
 
-`--depth 12` analyzes ~50 games in a few minutes. Lower it (`--depth 8`) for a
+`--depth 12` analyzes ~100 games in a few minutes. Lower it (`--depth 8`) for a
 quick pass, raise it (`--depth 16`) for sharper blunder detection at more cost.
 Use `--max-games` to spot-check quickly.
 
@@ -113,7 +113,7 @@ weaknesses the numbers don't support.
 
 - **`no public profile for '<user>'`** — username misspelled, or the account's
   archives are private. Confirm the exact chess.com username.
-- **Fewer than 50 games returned** — the account simply hasn't played that many;
+- **Fewer than 100 games returned** — the account simply hasn't played that many;
   the report uses whatever is available.
 - **Analysis is slow** — lower `--depth`, or use `--max-games` for a quick look.
   Depth 12 is a good accuracy/speed balance; depth 8 is roughly 3x faster.
