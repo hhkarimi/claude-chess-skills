@@ -48,3 +48,31 @@ def test_section_charts_has_all_metric_headings():
                     "Move quality", "wins vs losses", "Time trouble"):
         assert heading in out
     assert "<svg" in out
+
+
+def _games_with_blunders():
+    # white blundering from a winning (+500) and an equal (+20) position;
+    # black blundering from a losing (white +400 => black -400) position.
+    return [
+        {"my_color": "white", "url": "https://chess.com/g/1", "moves": [
+            {"class": "blunder", "eval_before": 500},
+            {"class": None, "eval_before": -100},
+            {"class": "blunder", "eval_before": 20},
+        ]},
+        {"my_color": "black", "url": "https://chess.com/g/2", "moves": [
+            {"class": "blunder", "eval_before": 400},
+        ]},
+    ]
+
+
+def test_blunder_origin_buckets_use_player_pov_and_sum_to_total():
+    buckets = rr.blunder_origin_buckets(_games_with_blunders())
+    assert buckets == {"winning": 1, "equal": 1, "losing": 1}
+    assert sum(buckets.values()) == 3
+
+
+def test_section_blunder_origin_renders_chart():
+    out = rr.section_blunder_origin(_games_with_blunders())
+    assert "Where your blunders come from" in out
+    assert "<svg" in out
+    assert "winning" in out.lower()

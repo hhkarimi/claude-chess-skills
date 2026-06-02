@@ -140,6 +140,47 @@ def section_charts(agg: dict) -> str:
     ])
 
 
+def pov(color: str, cp: float) -> float:
+    """White-POV centipawns -> the mover's POV (positive = good for mover)."""
+    return cp if color == "white" else -cp
+
+
+def blunder_origin_buckets(games: list) -> dict:
+    """Count blunders by the player-POV eval *before* the blunder move."""
+    out = {"winning": 0, "equal": 0, "losing": 0}
+    for g in games:
+        color = g.get("my_color", "white")
+        for m in g.get("moves", []):
+            if m.get("class") != "blunder":
+                continue
+            e = pov(color, m.get("eval_before", 0))
+            if e > 150:
+                out["winning"] += 1
+            elif e < -150:
+                out["losing"] += 1
+            else:
+                out["equal"] += 1
+    return out
+
+
+def section_blunder_origin(games: list) -> str:
+    b = blunder_origin_buckets(games)
+    total = sum(b.values()) or 1
+    rows = [
+        (f"From winning (>+1.5): {100 * b['winning'] // total}%", b["winning"]),
+        (f"From equal (±1.5): {100 * b['equal'] // total}%", b["equal"]),
+        (f"From losing (<-1.5): {100 * b['losing'] // total}%", b["losing"]),
+    ]
+    return "\n".join([
+        "<h2>Where your blunders come from</h2>",
+        '<p class="muted">Each blunder bucketed by the engine eval (your point of '
+        "view) on the move just before it. Blunders thrown from winning or equal "
+        "positions are the ones you can most directly stop.</p>",
+        _chart("Blunders by position strength before the mistake",
+               svg_bars(rows, color="#b5482f")),
+    ])
+
+
 def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
     n = agg.get("games_analyzed", 0)
@@ -148,6 +189,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     body = [
         f"<h1>Chess analysis ({n} games{acc_str})</h1>",
         section_charts(agg),
+        section_blunder_origin(games),
     ]
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
