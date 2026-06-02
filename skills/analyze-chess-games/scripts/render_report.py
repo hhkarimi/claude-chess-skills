@@ -17,6 +17,9 @@ import html
 import json
 from pathlib import Path
 
+import chess
+import chess.svg
+
 DEFAULT_DIR = "chess-analysis"
 
 STYLE = """
@@ -257,6 +260,62 @@ def section_trajectories(agg: dict, games: list, limit: int = 6) -> str:
     ])
 
 
+def opening_position_fen(game: dict) -> str | None:
+    """FEN once the opening is complete: the first non-opening move's fen_before,
+    else the last move's fen_before, else None."""
+    moves = game.get("moves", [])
+    for m in moves:
+        if m.get("phase") != "opening":
+            return m.get("fen_before")
+    if moves:
+        return moves[-1].get("fen_before")
+    return None
+
+
+def board_svg(fen: str, *, color: str = "white", size: int = 240) -> str:
+    """Inline SVG board for a FEN, oriented from the given color's side."""
+    orientation = chess.WHITE if color == "white" else chess.BLACK
+    return chess.svg.board(
+        chess.Board(fen), orientation=orientation, size=size, coordinates=False
+    )
+
+
+def _find_opening_game(games: list, opening: str, color: str) -> dict | None:
+    for g in games:
+        if g.get("opening") == opening and g.get("my_color") == color:
+            return g
+    return None
+
+
+def section_openings(agg: dict, games: list, limit: int = 8) -> str:
+    ops = agg.get("opening_performance", [])
+    if not ops:
+        return ("<h2>Openings</h2>"
+                "<p class='muted'>(no opening played 2+ times in this sample)</p>")
+    cards = []
+    for o in ops[:limit]:
+        rec = f"{o['win']}-{o['loss']}-{o['draw']}"
+        wr = f"{100 * o['win'] / o['games']:.0f}%" if o.get("games") else "-"
+        cpl = o.get("avg_opening_cpl")
+        cpl_str = f"{cpl:.0f}" if cpl is not None else "-"
+        g = _find_opening_game(games, o["opening"], o["color"])
+        fen = opening_position_fen(g) if g else None
+        board = (
+            f'<div class="board">{board_svg(fen, color=o["color"])}</div>'
+            if fen else ""
+        )
+        cards.append(
+            '<div class="card">'
+            f"<h3>{_esc(o['opening'])} <span class='muted'>"
+            f"({_esc(o['color'].title())})</span></h3>"
+            f"{board}"
+            "<div>"
+            f"<p>Record: <strong>{_esc(rec)}</strong> · Win rate: {_esc(wr)} · "
+            f"Opening CPL: {_esc(cpl_str)}</p></div></div>"
+        )
+    return "<h2>Openings</h2>\n" + "\n".join(cards)
+
+
 def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
     """Assemble the full self-contained HTML document."""
     n = agg.get("games_analyzed", 0)
@@ -267,6 +326,7 @@ def build_html(agg: dict, games: list, tips_md: str | None = None) -> str:
         section_charts(agg),
         section_blunder_origin(games),
         section_trajectories(agg, games),
+        section_openings(agg, games),
     ]
     return (
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"

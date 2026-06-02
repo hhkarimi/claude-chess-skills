@@ -104,3 +104,48 @@ def test_section_trajectories_one_chart_per_blunder_game():
     assert "Eval trajectory" in out
     assert out.count("<svg") >= 1
     assert "Qxf7" in out
+
+
+def test_opening_position_fen_stops_at_end_of_opening():
+    game = {"moves": [
+        {"phase": "opening", "fen_before": "FEN_OPENING_1"},
+        {"phase": "opening", "fen_before": "FEN_OPENING_2"},
+        {"phase": "middlegame", "fen_before": "FEN_MIDDLE"},
+    ]}
+    assert rr.opening_position_fen(game) == "FEN_MIDDLE"
+
+
+def test_opening_position_fen_all_opening_uses_last():
+    game = {"moves": [
+        {"phase": "opening", "fen_before": "A"},
+        {"phase": "opening", "fen_before": "B"},
+    ]}
+    assert rr.opening_position_fen(game) == "B"
+
+
+def test_board_svg_renders_real_svg_from_startpos():
+    import chess
+    svg = rr.board_svg(chess.STARTING_FEN, color="white")
+    assert "<svg" in svg
+
+
+def test_section_openings_includes_board_when_game_matches():
+    agg = {"opening_performance": [
+        {"opening": "Scotch Game", "color": "white", "games": 2,
+         "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 40.0},
+    ]}
+    import chess
+    games = [{"opening": "Scotch Game", "my_color": "white", "moves": [
+        {"phase": "opening", "fen_before": chess.STARTING_FEN},
+        {"phase": "middlegame", "fen_before": chess.STARTING_FEN},
+    ]}]
+    out = rr.section_openings(agg, games)
+    assert "Scotch Game" in out
+    assert "<svg" in out  # board rendered
+    assert "2-0-0" in out
+
+
+def test_section_openings_empty_is_graceful():
+    out = rr.section_openings({"opening_performance": []}, [])
+    assert "no opening" in out.lower()
+    assert "<svg" not in out
