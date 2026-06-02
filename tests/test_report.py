@@ -490,3 +490,45 @@ def test_section_top_blunders_includes_sparkline_from_games():
     out = rr.section_top_blunders(agg, games=games)
     assert "<polyline" in out  # sparkline rendered inside the blunder card
     assert "Top blunders" in out
+
+
+def test_section_practice_always_includes_puzzles():
+    out = rr.section_practice(
+        {"avg_cpl_by_phase": {}, "blunders_by_phase": {}, "opening_performance": []}
+    )
+    assert "lichess.org/training" in out
+    assert "Where to practice" in out
+
+
+def test_section_practice_includes_endgame_when_weak():
+    agg = {
+        "avg_cpl_by_phase": {"opening": 10, "middlegame": 20, "endgame": 95},
+        "blunders_by_phase": {"endgame": {"blunder": 30}},
+        "opening_performance": [],
+    }
+    assert "lichess.org/practice" in rr.section_practice(agg)
+
+
+def test_section_practice_skips_endgame_when_strong():
+    agg = {
+        "avg_cpl_by_phase": {"opening": 90, "middlegame": 80, "endgame": 10},
+        "blunders_by_phase": {"opening": {"blunder": 30}, "middlegame": {"blunder": 20}},
+        "opening_performance": [],
+    }
+    assert "lichess.org/practice" not in rr.section_practice(agg)
+
+
+def test_section_practice_names_weakest_opening():
+    agg = {
+        "avg_cpl_by_phase": {}, "blunders_by_phase": {},
+        "opening_performance": [
+            {"opening": "Italian Game", "color": "black", "games": 3,
+             "win": 1, "loss": 2, "draw": 0, "avg_opening_cpl": 80.0},
+        ],
+    }
+    out = rr.section_practice(agg)
+    assert "lichess.org/opening" in out and "Italian Game" in out
+
+
+def test_section_study_plan_includes_practice():
+    assert "Where to practice" in rr.section_study_plan({"avg_cpl_by_phase": {}})

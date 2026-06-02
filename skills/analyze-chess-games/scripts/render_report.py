@@ -610,6 +610,43 @@ def md_to_html(text: str) -> str:
     return "\n".join(blocks)
 
 
+def section_practice(agg: dict) -> str:
+    """Tailored lichess practice links chosen from the player's weaknesses."""
+    cpl = agg.get("avg_cpl_by_phase", {})
+    bbp = agg.get("blunders_by_phase", {})
+    ranked = sorted(
+        ("opening", "middlegame", "endgame"),
+        key=lambda p: (cpl.get(p) or 0) + bbp.get(p, {}).get("blunder", 0) * 10,
+        reverse=True,
+    )
+    items = [
+        '<li><a href="https://lichess.org/training">Lichess puzzles</a> — most of '
+        "your blunders come from winning positions, so daily puzzles build the "
+        "habit of checking your opponent's reply before you move.</li>"
+    ]
+    if "endgame" in ranked[:2]:
+        items.append(
+            '<li><a href="https://lichess.org/practice">Lichess practice drills</a> '
+            "— the endgame is one of your two leakiest phases; these teach the basic "
+            "winning and drawing techniques.</li>"
+        )
+    weak = [
+        o
+        for o in agg.get("opening_performance", [])
+        if o.get("loss", 0) > o.get("win", 0) or (o.get("avg_opening_cpl") or 0) > 60
+    ]
+    if weak:
+        worst = sorted(
+            weak, key=lambda o: (o["win"] - o["loss"], -(o.get("avg_opening_cpl") or 0))
+        )[0]
+        items.append(
+            '<li><a href="https://lichess.org/opening">Lichess opening explorer</a> '
+            f"— look up {_esc(worst['opening'])} ({_esc(worst['color'])}), your "
+            "weakest opening, to learn its main lines and plans.</li>"
+        )
+    return "<h3>Where to practice</h3>\n<ul>" + "".join(items) + "</ul>"
+
+
 def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     parts = ["<h2>Study plan</h2>"]
     if tips_md:
@@ -664,6 +701,7 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
             '<p class="muted">Set each up and find the move you missed.</p>'
             "<ul>" + dl + "</ul>"
         )
+    parts.append(section_practice(agg))
     return "\n".join(parts)
 
 
