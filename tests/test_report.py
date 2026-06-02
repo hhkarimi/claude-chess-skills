@@ -483,3 +483,23 @@ def test_build_html_emits_board_script_once():
     out = rr.build_html(agg, [], raw_games=raw)
     assert out.count("function chessStep") == 1
     assert 'class="player' in out
+
+
+def test_term_wraps_with_tooltip_and_glossary_anchor():
+    out = rr._term("cpl")
+    assert 'href="#glossary-cpl"' in out
+    assert "title=" in out
+    assert "CPL" in out
+
+
+def test_section_glossary_has_anchor_targets():
+    out = rr.section_glossary()
+    assert 'id="glossary"' in out
+    assert 'id="glossary-cpl"' in out
+    assert 'id="glossary-blunder"' in out
+    assert "Glossary" in out
+
+
+def test_build_html_includes_glossary():
+    out = rr.build_html(_min_agg(), [])
+    assert 'id="glossary"' in out

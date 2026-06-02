@@ -82,6 +82,59 @@ def _cpl_str(cpl: float | None) -> str:
     return f"{cpl:.0f}" if cpl is not None else "-"
 
 
+GLOSSARY = {
+    "cpl": (
+        "CPL",
+        "Centipawn loss: how much worse your move was than the engine's best "
+        "move, in hundredths of a pawn. Lower is better.",
+    ),
+    "blunder": (
+        "blunder",
+        "A move that throws away a lot — here, 300 or more centipawns versus the "
+        "best move.",
+    ),
+    "mistake": (
+        "mistake",
+        "A move that loses a moderate amount, 100 to 299 centipawns.",
+    ),
+    "inaccuracy": (
+        "inaccuracy",
+        "A small slip, 50 to 99 centipawns worse than the best move.",
+    ),
+    "time_trouble": (
+        "time trouble",
+        "Moves made with little time left on your clock, where mistakes are more "
+        "likely.",
+    ),
+    "eval": (
+        "evaluation",
+        "The engine's score for a position in centipawns (100 = one pawn). "
+        "Positive means you are better.",
+    ),
+    "phase": (
+        "phase",
+        "Which stage of the game a move is in: opening, middlegame, or endgame.",
+    ),
+}
+
+
+def _term(key: str) -> str:
+    """Wrap a glossary term in a tooltip + link to its glossary entry."""
+    display, definition = GLOSSARY[key]
+    return (
+        f'<abbr class="term" title="{_esc(definition)}">'
+        f'<a href="#glossary-{key}">{_esc(display)}</a></abbr>'
+    )
+
+
+def section_glossary() -> str:
+    items = "".join(
+        f'<dt id="glossary-{key}">{_esc(display)}</dt><dd>{_esc(defn)}</dd>'
+        for key, (display, defn) in GLOSSARY.items()
+    )
+    return '<h2 id="glossary">Glossary</h2>\n<dl class="glossary">' + items + "</dl>"
+
+
 def svg_bars(
     rows: list[tuple[str, float]],
     *,
@@ -223,9 +276,10 @@ def section_blunder_origin(games: list) -> str:
     return "\n".join(
         [
             "<h2>Where your blunders come from</h2>",
-            '<p class="muted">Each blunder bucketed by the engine eval (your point of '
-            "view) on the move just before it. Blunders thrown from winning or equal "
-            "positions are the ones you can most directly stop.</p>",
+            '<p class="muted">Each blunder bucketed by the engine '
+            f"{_term('eval')} (your point of view) on the move just before it. "
+            "Blunders thrown from winning or equal positions are the ones you can "
+            "most directly stop.</p>",
             _chart(
                 "Blunders by position strength before the mistake",
                 svg_bars(rows, color="#b5482f"),
@@ -479,7 +533,7 @@ def section_openings(agg: dict, games: list, pgn_by_url: dict | None = None,
             f"{board}"
             "<div>"
             f"<p>Record: <strong>{_esc(rec)}</strong> · Win rate: {_esc(wr)} · "
-            f"Opening CPL: {_esc(cpl_str)}</p></div></div>"
+            f"Opening {_term('cpl')}: {_esc(cpl_str)}</p></div></div>"
         )
     return "<h2>Openings</h2>\n" + "\n".join(cards)
 
@@ -600,7 +654,7 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     phases.sort(key=lambda t: t[1], reverse=True)
     phase_items = "".join(
         f"<li><strong>{p.title()}</strong>: "
-        f"avg CPL {('-' if c is None else round(c))}, {bl} blunders</li>"
+        f"avg {_term('cpl')} {('-' if c is None else round(c))}, {bl} blunders</li>"
         for p, _, c, bl in phases
     )
     parts.append(
@@ -652,6 +706,7 @@ def build_html(agg: dict, games: list, raw_games: list | None = None,
         section_openings(agg, games, pgn_by_url),
         section_top_blunders(agg, pgn_by_url),
         section_study_plan(agg, tips_md),
+        section_glossary(),
     ]
     return (
         '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
