@@ -28,31 +28,33 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 
 1. **`fetch_games.py`** — reads chess.com's public Published-Data API. Resolves
    the player's monthly archive list, walks it newest-first, and writes the last
-   N games (PGN + metadata) to `games.json`. Stdlib only (urllib), no deps. The
-   username is a CLI arg — never hardcode or commit it.
+   N games (PGN + metadata) to `chess-analysis/<username>/games-<username>.json`.
+   Stdlib only (urllib), no deps. The username is a CLI arg — never hardcode or
+   commit it.
 
 2. **`analyze_games.py`** — runs each game through Stockfish via `python-chess`.
    Uses the efficient one-eval-per-position sweep: evaluate every position once
    from White's POV, then CPL of a move = eval(before) − eval(after) in the
    mover's POV, floored at 0. Classifies moves (inaccuracy/mistake/blunder by
    CPL), tags phase, flags time trouble from `[%clk]` tags, and writes
-   `analysis.json` (per-move) + `aggregate.json` (summary + top blunders).
-   Auto-installs Stockfish via `brew` if missing.
+   `analysis-<username>.json` (per-move) + `aggregate-<username>.json` (summary +
+   top blunders) into the same `--in` dir. Auto-installs Stockfish via `brew` if
+   missing.
 
-3. **Report** — Claude reads `aggregate.json` and writes the stats dashboard +
+3. **Report** — Claude reads `aggregate-<username>.json` and writes the stats dashboard +
    prioritized tips. See [SKILL.md](skills/analyze-chess-games/SKILL.md) step 4
    for exactly which fields drive which part of the report. **Always include the
    chess.com game links from `top_blunders`** — they're the user's payoff: a tip
    they can't replay is half a tip.
 
 4. **`render_report.py`** — an optional, additive renderer (PEP 723 dep:
-   `python-chess` for `chess.svg` board diagrams) that turns `aggregate.json` +
-   `analysis.json` into a single self-contained `report.html`: inline CSS,
+   `python-chess` for `chess.svg` board diagrams) that turns `aggregate-<username>.json` +
+   `analysis-<username>.json` into a single self-contained `report-<username>.html`: inline CSS,
    hand-rolled inline SVG charts, per-opening board figures, a blunder-origin
    chart with per-blunder eval-swing sparklines, and a data-driven study plan (with an optional
    `--tips` Markdown slot for Claude-authored coaching). `render_charts.py` stays
    stdlib-only; the HTML renderer is the only place `python-chess` is needed for
-   presentation. It also reads `games.json` (full PGN) to build click-through board steppers for
+   presentation. It also reads `games-<username>.json` (full PGN) to build click-through board steppers for
    openings and blunders (one small inline vanilla-JS stepper, still no CDN/library),
    shows an eval-swing sparkline per blunder, and renders a glossary plus tailored
    lichess practice links. The analyzer also emits a per-game `opening_line` (san +
@@ -63,6 +65,12 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 
 ### Key invariants
 
+- **Per-user output layout**: every stage namespaces by username. `fetch` writes
+  `chess-analysis/<username>/games-<username>.json`; `analyze` and `render` read
+  the username back out of the games payload and read/write the matching
+  `-<username>` suffix in the same dir. So `--in` points at one user's subdir
+  (`chess-analysis/<username>`), and the scripts refuse a dir that holds more than
+  one user's files rather than guess.
 - **CPL math**: evals are clamped to ±`EVAL_CAP` (mate included) so one
   catastrophe can't dominate average CPL; per-move CPL is capped at `CPL_CAP` for
   averaging, while `raw_swing` keeps the uncapped value used to rank top blunders.
@@ -78,9 +86,9 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 
 ```bash
 cd skills/analyze-chess-games/scripts
-uv run fetch_games.py <username> --count 100    # fetch
-uv run analyze_games.py --depth 12              # analyze
-uv run render_report.py --in ./chess-analysis   # self-contained HTML report
+uv run fetch_games.py <username> --count 100              # -> chess-analysis/<username>/
+uv run analyze_games.py --in ./chess-analysis/<username> --depth 12
+uv run render_report.py --in ./chess-analysis/<username>  # self-contained HTML report
 
 # from repo root — same checks CI runs
 uvx ruff check .
@@ -104,14 +112,15 @@ from a real ~900-rated public chess.com account with `render_report.py` run
 coaching). It contains no usernames — only public game-ID links.
 
 **Keep it current:** any PR that changes the report's output (`render_report.py`,
-or the `analysis.json`/`aggregate.json` fields the report reads) MUST regenerate
-this file in the same PR, and confirm no username leaked into it. Regenerate with:
+or the `analysis-<username>.json`/`aggregate-<username>.json` fields the report
+reads) MUST regenerate this file in the same PR, and confirm no username leaked
+into it. Regenerate with (output lands in `/tmp/sample/<~900-user>/`):
 
 ```bash
 uv run skills/analyze-chess-games/scripts/fetch_games.py <~900-user> --out /tmp/sample
-uv run skills/analyze-chess-games/scripts/analyze_games.py --in /tmp/sample --depth 12
-uv run skills/analyze-chess-games/scripts/render_report.py --in /tmp/sample
-cp /tmp/sample/report.html docs/sample-report.html   # then grep it for any username
+uv run skills/analyze-chess-games/scripts/analyze_games.py --in /tmp/sample/<~900-user> --depth 12
+uv run skills/analyze-chess-games/scripts/render_report.py --in /tmp/sample/<~900-user>
+cp /tmp/sample/<~900-user>/report-*.html docs/sample-report.html   # then grep it for any username
 ```
 
 ## Things to NOT do

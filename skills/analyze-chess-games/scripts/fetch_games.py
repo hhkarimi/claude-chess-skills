@@ -6,8 +6,8 @@
 
 No authentication required — the API serves public game archives. We resolve the
 player's monthly archive list, walk it newest-first, and collect games until we
-have the requested count (default 100). Output is a single games.json the analyzer
-consumes.
+have the requested count (default 100). Output is written per-username to
+<out>/<username>/games-<username>.json, which the analyzer consumes.
 
 Usage:
     uv run fetch_games.py <username> [--count 100] [--out ./chess-analysis]
@@ -150,7 +150,10 @@ def main() -> None:
     )
     args = ap.parse_args()
 
-    out_dir = Path(args.out)
+    # Namespace output by username so multiple players don't clobber each other:
+    # <out>/<username>/games-<username>.json. Downstream stages read the username
+    # back out of games.json, so they self-discover the suffixed filenames.
+    out_dir = Path(args.out) / args.username
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(
@@ -162,7 +165,7 @@ def main() -> None:
         raise SystemExit(f"No games with PGNs found for '{args.username}'.")
 
     payload = {"username": args.username, "count": len(games), "games": games}
-    out_file = out_dir / "games.json"
+    out_file = out_dir / f"games-{args.username}.json"
     out_file.write_text(json.dumps(payload, indent=2))
 
     wins = sum(g["result"] == "win" for g in games)

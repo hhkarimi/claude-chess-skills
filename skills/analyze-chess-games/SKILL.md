@@ -10,7 +10,8 @@ turn the engine data into a stats dashboard plus a short, prioritized list of
 improvement tips with concrete examples.
 
 This is a two-script pipeline (`fetch_games.py` -> `analyze_games.py`) plus a
-report you write from the resulting `aggregate.json`.
+report you write from the resulting `aggregate-<username>.json`. Output is
+namespaced per username under `./chess-analysis/<username>/`.
 
 ## When to use
 
@@ -37,29 +38,35 @@ Pass it as a CLI argument every run. Do not hardcode or commit it.
 
 ### 2. Fetch recent games
 
-PEP 723 inline-deps Python — run with `uv run`. Default output dir is `./chess-analysis`.
+PEP 723 inline-deps Python — run with `uv run`. Output is namespaced per
+username: everything lands in `./chess-analysis/<username>/` so multiple players
+don't clobber each other.
 
 ```bash
 uv run scripts/fetch_games.py <username> [--count 100] [--out ./chess-analysis]
 ```
 
-Writes `games.json` (`{username, count, games: [...]}`). Each game carries the
-PGN plus metadata: color, normalized result (win/loss/draw), time class/control,
-ratings, and chess.com's own accuracy score when present.
+Writes `chess-analysis/<username>/games-<username>.json`
+(`{username, count, games: [...]}`). Each game carries the PGN plus metadata:
+color, normalized result (win/loss/draw), time class/control, ratings, and
+chess.com's own accuracy score when present.
 
 ### 3. Analyze with Stockfish
 
+Point `--in` at the user's subdir; the analyzer reads the username back out of
+the games file and writes its outputs with the same suffix.
+
 ```bash
-uv run scripts/analyze_games.py [--in ./chess-analysis] [--depth 12] [--max-games N]
+uv run scripts/analyze_games.py --in ./chess-analysis/<username> [--depth 12] [--max-games N]
 ```
 
 If Stockfish is not on PATH, the script installs it with `brew install stockfish`
 (pass `--no-install` to disable, or `--stockfish PATH` to point at a binary).
 
-Writes:
-- `analysis.json` — per-game, per-move detail for the player's moves (CPL, class,
-  phase, time-trouble flag, eval before/after, FEN).
-- `aggregate.json` — the summary you build the report from.
+Writes (alongside the games file):
+- `analysis-<username>.json` — per-game, per-move detail for the player's moves
+  (CPL, class, phase, time-trouble flag, eval before/after, FEN).
+- `aggregate-<username>.json` — the summary you build the report from.
 
 `--depth 12` analyzes ~100 games in a few minutes. Lower it (`--depth 8`) for a
 quick pass, raise it (`--depth 16`) for sharper blunder detection at more cost.
@@ -67,10 +74,10 @@ Use `--max-games` to spot-check quickly.
 
 ### 4. Render the charts
 
-Generate the visual dashboard from `aggregate.json`:
+Generate the visual dashboard from `aggregate-<username>.json`:
 
 ```bash
-uv run scripts/render_charts.py [--in ./chess-analysis]
+uv run scripts/render_charts.py --in ./chess-analysis/<username>
 ```
 
 This prints a Markdown block with two parts: **charts** (ASCII bar charts in
@@ -86,27 +93,28 @@ diagrams, a blunder-origin chart and per-blunder eval-swing sparklines, and a
 study plan:
 
 ```bash
-uv run scripts/render_report.py [--in ./chess-analysis] [--tips tips.md]
+uv run scripts/render_report.py --in ./chess-analysis/<username> [--tips tips.md]
 ```
 
-Writes `report.html` to the input dir — one file, no external assets, opens in
-any browser offline. The study plan is generated from the data; if you pass
-`--tips path/to/tips.md` (Markdown), your written coaching is injected as a
-"Coach's notes" block at the top of the plan. Only the `python-chess` dependency
+Writes `report-<username>.html` to the input dir — one file, no external assets,
+opens in any browser offline. The study plan is generated from the data; if you
+pass `--tips path/to/tips.md` (Markdown), your written coaching is injected as a
+"Coach's notes" block at the top of the plan. With no `--tips`, the renderer
+picks up `tips-<username>.md` from the input dir if present. Only the `python-chess` dependency
 is needed (already used by the analyzer), and `render_charts.py` is unaffected.
 The report is interactive: opening and top-blunder boards step through the moves
 (First/Prev/Next/Last) and each blunder card shows its evaluation-swing chart;
 jargon has hover tooltips with a Glossary at the bottom; and the study plan links
 to lichess practice resources matched to your weaknesses. The renderer also reads
-`games.json` for move-by-move replay — if it is absent, boards fall back to a
-single static diagram. Opening boards stop at the move that defines each opening
+`games-<username>.json` for move-by-move replay — if it is absent, boards fall
+back to a single static diagram. Opening boards stop at the move that defines each opening
 (matched against a bundled openings book, `openings_book.txt`, derived from
 lichess chess-openings, CC0) and show the engine score in pawns from White's
 point of view at each step.
 
 ### 6. Write the report
 
-Read `aggregate.json` and produce **two parts**:
+Read `aggregate-<username>.json` and produce **two parts**:
 
 **A. Stats dashboard** — paste the `render_charts.py` output verbatim. Keep the
 fenced code blocks intact (they preserve the bar alignment) and leave the Markdown

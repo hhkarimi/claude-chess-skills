@@ -2,14 +2,18 @@
 # requires-python = ">=3.11"
 # dependencies = ["chess>=1.11"]
 # ///
-"""Render aggregate.json + analysis.json as a self-contained HTML report.
+"""Render a player's aggregate/analysis JSON as a self-contained HTML report.
+
+Reads the per-user files in --in (aggregate-<username>.json + analysis-<username>.json,
+or legacy unsuffixed names) and writes report-<username>.html alongside them.
 
 One file, no CDN, no JS library: inline CSS, hand-rolled inline SVG charts, and
 chess board diagrams via python-chess (chess.svg). Claude can optionally pass a
-Markdown file of coaching prose with --tips, injected as "Coach's notes".
+Markdown file of coaching prose with --tips (defaults to tips-<username>.md in
+--in if present), injected as "Coach's notes".
 
 Usage:
-    uv run render_report.py [--in ./chess-analysis] [--tips tips.md]
+    uv run render_report.py [--in ./chess-analysis/<username>] [--tips tips.md]
 """
 
 import argparse
@@ -805,22 +809,37 @@ def build_html(
     )
 
 
-def load(in_dir: str) -> tuple[dict, list, list]:
-    """Read aggregate.json, analysis.json, and games.json (PGNs) from in_dir."""
+def _one(d: Path, prefix: str) -> Path | None:
+    """Single {prefix}*.json in d (the per-user suffixed file, or legacy name).
+    None if absent; errors if a multi-user dir makes the match ambiguous."""
+    matches = sorted(d.glob(f"{prefix}*.json"))
+    if not matches:
+        return None
+    if len(matches) > 1:
+        names = ", ".join(p.name for p in matches)
+        raise SystemExit(
+            f"Multiple {prefix} files in {d} ({names}); point --in at one "
+            "user's directory."
+        )
+    return matches[0]
+
+
+def load(in_dir: str) -> tuple[dict, list, list, str]:
+    """Read aggregate/analysis/games JSON from in_dir, accepting the per-user
+    suffixed filenames (aggregate-<name>.json, ...) and legacy unsuffixed ones.
+    Returns (aggregate, per-game analysis, raw games, username)."""
     d = Path(in_dir)
-    agg_file = d / "aggregate.json"
-    ana_file = d / "analysis.json"
-    games_file = d / "games.json"
-    if not agg_file.exists():
-        raise SystemExit(f"{agg_file} not found — run analyze_games.py first.")
+    agg_file = _one(d, "aggregate")
+    ana_file = _one(d, "analysis")
+    games_file = _one(d, "games")
+    if agg_file is None:
+        raise SystemExit(f"No aggregate*.json in {d} — run analyze_games.py first.")
     agg = json.loads(agg_file.read_text())
-    games = json.loads(ana_file.read_text()) if ana_file.exists() else []
-    raw_games = (
-        json.loads(games_file.read_text()).get("games", [])
-        if games_file.exists()
-        else []
-    )
-    return agg, games, raw_games
+    games = json.loads(ana_file.read_text()) if ana_file else []
+    raw_payload = json.loads(games_file.read_text()) if games_file else {}
+    raw_games = raw_payload.get("games", [])
+    username = raw_payload.get("username") or agg.get("username") or ""
+    return agg, games, raw_games, username
 
 
 def main() -> None:
@@ -828,12 +847,22 @@ def main() -> None:
     ap.add_argument(
         "--in", dest="in_dir", default=DEFAULT_DIR, help="dir with the analysis JSON"
     )
-    ap.add_argument("--tips", default=None, help="Markdown file of coaching prose")
+    ap.add_argument(
+        "--tips",
+        default=None,
+        help="Markdown file of coaching prose (defaults to tips-<username>.md "
+        "in --in if present)",
+    )
     args = ap.parse_args()
 
-    agg, games, raw_games = load(args.in_dir)
-    tips_md = Path(args.tips).read_text() if args.tips else None
-    out = Path(args.in_dir) / "report.html"
+    agg, games, raw_games, username = load(args.in_dir)
+    suffix = f"-{username}" if username else ""
+
+    in_path = Path(args.in_dir)
+    tips_path = Path(args.tips) if args.tips else in_path / f"tips{suffix}.md"
+    tips_md = tips_path.read_text() if tips_path.exists() else None
+
+    out = in_path / f"report{suffix}.html"
     out.write_text(build_html(agg, games, raw_games, tips_md))
     print(f"Wrote {out}")
 
