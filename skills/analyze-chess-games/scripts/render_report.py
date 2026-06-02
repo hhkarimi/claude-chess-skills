@@ -602,64 +602,74 @@ def section_top_blunders(
 
 
 def md_to_html(text: str) -> str:
-    """Minimal Markdown -> HTML: #/##/### headings, '- ' bullets, '1.' numbered
-    lists, blank-line paragraphs, and **bold**. Everything is HTML-escaped first."""
-    blocks, lines = [], text.splitlines()
-    bullets: list[str] = []
-    ordered: list[str] = []
+    """Minimal Markdown -> HTML: #/##/### headings, '-'/'1.' lists (with nesting by
+    two-space indent and multi-line wrapped items), blank-line paragraphs, and
+    **bold**. Everything is HTML-escaped first."""
+    parts: list[str] = []
     para: list[str] = []
+    stack: list[str] = []  # tags of open lists, outer -> inner; each has an open <li>
 
     def inline(s: str) -> str:
         return re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", _esc(s))
 
-    def flush_bullets() -> None:
-        if bullets:
-            blocks.append("<ul>" + "".join(f"<li>{x}</li>" for x in bullets) + "</ul>")
-            bullets.clear()
-
-    def flush_ordered() -> None:
-        if ordered:
-            blocks.append("<ol>" + "".join(f"<li>{x}</li>" for x in ordered) + "</ol>")
-            ordered.clear()
-
     def flush_para() -> None:
         if para:
-            blocks.append("<p>" + " ".join(inline(p) for p in para) + "</p>")
+            parts.append("<p>" + " ".join(inline(p) for p in para) + "</p>")
             para.clear()
 
-    def flush_all() -> None:
-        flush_bullets()
-        flush_ordered()
+    def close_to(depth: int) -> None:
+        while len(stack) > depth:
+            parts.append(f"</li></{stack.pop()}>")
+
+    def heading(tag: str, content: str) -> None:
         flush_para()
+        close_to(0)
+        parts.append(f"<{tag}>{inline(content)}</{tag}>")
 
     # Headings are intentionally demoted (# and ## -> h3, ### -> h4) so coaching
     # prose never outranks the report's own <h2> section titles.
-    for raw in lines:
-        line = raw.rstrip()
-        stripped = line.lstrip()
-        if not line.strip():
-            flush_all()
-        elif line.startswith("### "):
-            flush_all()
-            blocks.append(f"<h4>{inline(line[4:])}</h4>")
-        elif line.startswith("## "):
-            flush_all()
-            blocks.append(f"<h3>{inline(line[3:])}</h3>")
-        elif line.startswith("# "):
-            flush_all()
-            blocks.append(f"<h3>{inline(line[2:])}</h3>")
-        elif stripped.startswith("- "):
-            flush_ordered()
+    for raw in text.splitlines():
+        if not raw.strip():
             flush_para()
-            bullets.append(inline(stripped[2:]))
-        elif re.match(r"\d+\.\s", stripped):
-            flush_bullets()
+            continue
+        if raw.startswith("### "):
+            heading("h4", raw[4:])
+            continue
+        if raw.startswith("## "):
+            heading("h3", raw[3:])
+            continue
+        if raw.startswith("# "):
+            heading("h3", raw[2:])
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        line = raw.strip()
+        is_ul = line.startswith("- ")
+        is_ol = bool(re.match(r"\d+\.\s", line))
+        if is_ul or is_ol:
             flush_para()
-            ordered.append(inline(re.sub(r"^\d+\.\s+", "", stripped)))
+            tag = "ul" if is_ul else "ol"
+            content = line[2:] if is_ul else re.sub(r"^\d+\.\s+", "", line)
+            target = indent // 2 + 1
+            close_to(target)
+            if len(stack) == target:
+                parts.append("</li>")
+                if stack[-1] != tag:  # same depth but switched list type
+                    parts.append(f"</{stack.pop()}><{tag}>")
+                    stack.append(tag)
+                parts.append(f"<li>{inline(content)}")
+            else:
+                while len(stack) < target:
+                    parts.append(f"<{tag}>")
+                    stack.append(tag)
+                parts.append(f"<li>{inline(content)}")
+        elif stack and indent > 0:
+            parts.append(" " + inline(line))  # wrapped continuation of current item
         else:
+            close_to(0)
             para.append(line)
-    flush_all()
-    return "\n".join(blocks)
+    flush_para()
+    close_to(0)
+    return "".join(parts)
 
 
 def _weak_openings(agg: dict) -> list:

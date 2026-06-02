@@ -792,3 +792,18 @@ def test_md_to_html_bullets_and_numbered_are_separate_lists():
     out = rr.md_to_html("- a\n- b\n\n1. one\n2. two")
     assert "<ul><li>a</li><li>b</li></ul>" in out
     assert "<ol><li>one</li><li>two</li></ol>" in out
+
+
+def test_md_to_html_nested_numbered_list():
+    out = rr.md_to_html("1. A\n  1. a1\n  2. a2\n2. B")
+    assert out == "<ol><li>A<ol><li>a1</li><li>a2</li></ol></li><li>B</li></ol>"
+
+
+def test_md_to_html_multiline_item_continuation():
+    out = rr.md_to_html("- Item one\n  continued text\n- Item two")
+    assert "<li>Item one continued text</li>" in out
+
+
+def test_md_to_html_unindented_text_after_list_starts_paragraph():
+    out = rr.md_to_html("1. A\n\nDone now.")
+    assert out == "<ol><li>A</li></ol><p>Done now.</p>"
