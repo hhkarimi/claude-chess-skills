@@ -93,7 +93,7 @@ def clamp_eval(cp: int) -> int:
     return max(-EVAL_CAP, min(EVAL_CAP, cp))
 
 
-def load_book(path) -> set:
+def load_book(path: Path | str) -> set:
     """Load the vendored opening-position EPD set; missing file -> empty set."""
     p = Path(path)
     if not p.exists():
