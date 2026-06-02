@@ -331,7 +331,6 @@ def svg_sparkline(
     return "".join(parts)
 
 
-
 def opening_position_fen(game: dict) -> str | None:
     """FEN once the opening is complete: the first non-opening move's fen_before,
     else the last move's fen_before, else None."""
@@ -463,8 +462,9 @@ def _find_opening_game(games: list, opening: str, color: str) -> dict | None:
     return None
 
 
-def section_openings(agg: dict, games: list, pgn_by_url: dict | None = None,
-                     limit: int = 8) -> str:
+def section_openings(
+    agg: dict, games: list, pgn_by_url: dict | None = None, limit: int = 8
+) -> str:
     pgn_by_url = pgn_by_url or {}
     ops = agg.get("opening_performance", [])
     if not ops:
@@ -498,8 +498,9 @@ def section_openings(agg: dict, games: list, pgn_by_url: dict | None = None,
     return "<h2>Openings</h2>\n" + "\n".join(cards)
 
 
-def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
-                         games: list | None = None, limit: int = 8) -> str:
+def section_top_blunders(
+    agg: dict, pgn_by_url: dict | None = None, games: list | None = None, limit: int = 8
+) -> str:
     pgn_by_url = pgn_by_url or {}
     by_url = {g.get("url"): g for g in (games or [])}
     blunders = agg.get("top_blunders", [])
@@ -538,7 +539,7 @@ def section_top_blunders(agg: dict, pgn_by_url: dict | None = None,
             if fen:
                 board = (
                     f'<div class="board">'
-                    f'{board_svg(fen, color=b.get("color", "white"))}</div>'
+                    f"{board_svg(fen, color=b.get('color', 'white'))}</div>"
                 )
         link = f'<a href="{_esc(url)}">replay on chess.com</a>' if url else ""
         cards.append(
@@ -705,8 +706,9 @@ def section_study_plan(agg: dict, tips_md: str | None = None) -> str:
     return "\n".join(parts)
 
 
-def build_html(agg: dict, games: list, raw_games: list | None = None,
-               tips_md: str | None = None) -> str:
+def build_html(
+    agg: dict, games: list, raw_games: list | None = None, tips_md: str | None = None
+) -> str:
     """Assemble the full self-contained HTML document."""
     pgn_by_url = {g.get("url"): g.get("pgn") for g in (raw_games or []) if g.get("pgn")}
     n = agg.get("games_analyzed", 0)

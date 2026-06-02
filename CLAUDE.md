@@ -52,7 +52,10 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
    eval-trajectory visualizations, and a data-driven study plan (with an optional
    `--tips` Markdown slot for Claude-authored coaching). `render_charts.py` stays
    stdlib-only; the HTML renderer is the only place `python-chess` is needed for
-   presentation.
+   presentation. It also reads `games.json` (full PGN) to build click-through board steppers for
+   openings and blunders (one small inline vanilla-JS stepper, still no CDN/library),
+   shows an eval-swing sparkline per blunder, and renders a glossary plus tailored
+   lichess practice links.
 
 ### Key invariants
 

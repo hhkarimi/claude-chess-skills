@@ -121,8 +121,6 @@ def test_svg_sparkline_marks_the_blunder_index():
     assert "<circle" in svg  # the marked blunder point
 
 
-
-
 def test_opening_position_fen_stops_at_end_of_opening():
     game = {
         "moves": [
@@ -362,6 +360,7 @@ def test_board_player_one_visible_frame_and_controls():
 
 def test_board_player_unique_ids_across_calls():
     import re as _re
+
     f = [(chess.STARTING_FEN, "start")]
     id1 = _re.search(r'id="(bp\d+)"', rr.board_player(f)).group(1)
     id2 = _re.search(r'id="(bp\d+)"', rr.board_player(f)).group(1)
@@ -409,12 +408,25 @@ _OPEN_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *"
 def test_section_openings_interactive_when_pgn_present():
     agg = {
         "opening_performance": [
-            {"opening": "Ruy Lopez", "color": "white", "games": 2,
-             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+            {
+                "opening": "Ruy Lopez",
+                "color": "white",
+                "games": 2,
+                "win": 2,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 30.0,
+            },
         ]
     }
-    games = [{"opening": "Ruy Lopez", "my_color": "white", "url": "u1",
-              "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}]}]
+    games = [
+        {
+            "opening": "Ruy Lopez",
+            "my_color": "white",
+            "url": "u1",
+            "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}],
+        }
+    ]
     out = rr.section_openings(agg, games, {"u1": _OPEN_PGN})
     assert 'class="player' in out
     assert out.count('class="frame"') >= 3
@@ -423,23 +435,45 @@ def test_section_openings_interactive_when_pgn_present():
 def test_section_openings_falls_back_to_static_without_pgn():
     agg = {
         "opening_performance": [
-            {"opening": "Ruy Lopez", "color": "white", "games": 2,
-             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+            {
+                "opening": "Ruy Lopez",
+                "color": "white",
+                "games": 2,
+                "win": 2,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 30.0,
+            },
         ]
     }
-    games = [{"opening": "Ruy Lopez", "my_color": "white", "url": "u1",
-              "moves": [{"phase": "middlegame", "fen_before": chess.STARTING_FEN}]}]
+    games = [
+        {
+            "opening": "Ruy Lopez",
+            "my_color": "white",
+            "url": "u1",
+            "moves": [{"phase": "middlegame", "fen_before": chess.STARTING_FEN}],
+        }
+    ]
     out = rr.section_openings(agg, games)
     assert "<svg" in out
     assert 'class="player' not in out
 
 
 def test_section_top_blunders_interactive_when_pgn_present():
-    agg = {"top_blunders": [
-        {"game_url": "u1", "move_no": 3, "san": "Bb5", "phase": "opening",
-         "color": "white", "result": "loss", "raw_swing": 900,
-         "fen_before": chess.STARTING_FEN},
-    ]}
+    agg = {
+        "top_blunders": [
+            {
+                "game_url": "u1",
+                "move_no": 3,
+                "san": "Bb5",
+                "phase": "opening",
+                "color": "white",
+                "result": "loss",
+                "raw_swing": 900,
+                "fen_before": chess.STARTING_FEN,
+            },
+        ]
+    }
     out = rr.section_top_blunders(agg, {"u1": _OPEN_PGN})
     assert 'class="player' in out
     assert "u1" in out
@@ -448,9 +482,16 @@ def test_section_top_blunders_interactive_when_pgn_present():
 def test_build_html_emits_board_script_once():
     agg = _min_agg()
     agg["top_blunders"] = [
-        {"game_url": "u1", "move_no": 3, "san": "Bb5", "phase": "opening",
-         "color": "white", "result": "loss", "raw_swing": 900,
-         "fen_before": chess.STARTING_FEN},
+        {
+            "game_url": "u1",
+            "move_no": 3,
+            "san": "Bb5",
+            "phase": "opening",
+            "color": "white",
+            "result": "loss",
+            "raw_swing": 900,
+            "fen_before": chess.STARTING_FEN,
+        },
     ]
     raw = [{"url": "u1", "pgn": _OPEN_PGN}]
     out = rr.build_html(agg, [], raw_games=raw)
@@ -479,14 +520,30 @@ def test_build_html_includes_glossary():
 
 
 def test_section_top_blunders_includes_sparkline_from_games():
-    agg = {"top_blunders": [
-        {"game_url": "u1", "move_no": 2, "san": "Qxf7", "phase": "middlegame",
-         "color": "white", "result": "loss", "raw_swing": 2000,
-         "fen_before": chess.STARTING_FEN},
-    ]}
-    games = [{"url": "u1", "my_color": "white", "moves": [
-        {"move_no": 1, "eval_after": 500},
-        {"move_no": 2, "eval_after": -1500}]}]
+    agg = {
+        "top_blunders": [
+            {
+                "game_url": "u1",
+                "move_no": 2,
+                "san": "Qxf7",
+                "phase": "middlegame",
+                "color": "white",
+                "result": "loss",
+                "raw_swing": 2000,
+                "fen_before": chess.STARTING_FEN,
+            },
+        ]
+    }
+    games = [
+        {
+            "url": "u1",
+            "my_color": "white",
+            "moves": [
+                {"move_no": 1, "eval_after": 500},
+                {"move_no": 2, "eval_after": -1500},
+            ],
+        }
+    ]
     out = rr.section_top_blunders(agg, games=games)
     assert "<polyline" in out  # sparkline rendered inside the blunder card
     assert "Top blunders" in out
@@ -512,7 +569,10 @@ def test_section_practice_includes_endgame_when_weak():
 def test_section_practice_skips_endgame_when_strong():
     agg = {
         "avg_cpl_by_phase": {"opening": 90, "middlegame": 80, "endgame": 10},
-        "blunders_by_phase": {"opening": {"blunder": 30}, "middlegame": {"blunder": 20}},
+        "blunders_by_phase": {
+            "opening": {"blunder": 30},
+            "middlegame": {"blunder": 20},
+        },
         "opening_performance": [],
     }
     assert "lichess.org/practice" not in rr.section_practice(agg)
@@ -520,10 +580,18 @@ def test_section_practice_skips_endgame_when_strong():
 
 def test_section_practice_names_weakest_opening():
     agg = {
-        "avg_cpl_by_phase": {}, "blunders_by_phase": {},
+        "avg_cpl_by_phase": {},
+        "blunders_by_phase": {},
         "opening_performance": [
-            {"opening": "Italian Game", "color": "black", "games": 3,
-             "win": 1, "loss": 2, "draw": 0, "avg_opening_cpl": 80.0},
+            {
+                "opening": "Italian Game",
+                "color": "black",
+                "games": 3,
+                "win": 1,
+                "loss": 2,
+                "draw": 0,
+                "avg_opening_cpl": 80.0,
+            },
         ],
     }
     out = rr.section_practice(agg)
@@ -532,3 +600,60 @@ def test_section_practice_names_weakest_opening():
 
 def test_section_study_plan_includes_practice():
     assert "Where to practice" in rr.section_study_plan({"avg_cpl_by_phase": {}})
+
+
+def test_build_html_v2_full_document():
+    agg = _min_agg()
+    agg["opening_performance"] = [
+        {
+            "opening": "Ruy Lopez",
+            "color": "white",
+            "games": 2,
+            "win": 2,
+            "loss": 0,
+            "draw": 0,
+            "avg_opening_cpl": 30.0,
+        },
+    ]
+    agg["top_blunders"] = [
+        {
+            "game_url": "u1",
+            "move_no": 3,
+            "san": "Bb5",
+            "phase": "opening",
+            "color": "white",
+            "result": "loss",
+            "raw_swing": 900,
+            "fen_before": chess.STARTING_FEN,
+        },
+    ]
+    games = [
+        {
+            "opening": "Ruy Lopez",
+            "my_color": "white",
+            "url": "u1",
+            "moves": [
+                {
+                    "move_no": 3,
+                    "phase": "opening",
+                    "eval_before": 300,
+                    "eval_after": -600,
+                    "class": "blunder",
+                    "fen_before": chess.STARTING_FEN,
+                }
+            ],
+        }
+    ]
+    raw = [{"url": "u1", "pgn": "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *"}]
+    out = rr.build_html(agg, games, raw_games=raw, tips_md="## Notes\n\nWatch checks.")
+    for needle in (
+        'class="player',
+        "function chessStep",
+        "Glossary",
+        "Where to practice",
+        "Coach's notes",
+        "<polyline",
+    ):
+        assert needle in out, needle
+    assert out.count("function chessStep") == 1
+    assert out.strip().endswith("</html>")

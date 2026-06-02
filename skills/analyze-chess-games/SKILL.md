@@ -93,6 +93,12 @@ any browser offline. The study plan is generated from the data; if you pass
 `--tips path/to/tips.md` (Markdown), your written coaching is injected as a
 "Coach's notes" block at the top of the plan. Only the `python-chess` dependency
 is needed (already used by the analyzer), and `render_charts.py` is unaffected.
+The report is interactive: opening and top-blunder boards step through the moves
+(First/Prev/Next/Last) and each blunder card shows its evaluation-swing chart;
+jargon has hover tooltips with a Glossary at the bottom; and the study plan links
+to lichess practice resources matched to your weaknesses. The renderer also reads
+`games.json` for move-by-move replay — if it is absent, boards fall back to a
+single static diagram.
 
 ### 6. Write the report
 
