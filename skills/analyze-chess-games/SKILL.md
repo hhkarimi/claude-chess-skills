@@ -99,7 +99,10 @@ The report is interactive: opening and top-blunder boards step through the moves
 jargon has hover tooltips with a Glossary at the bottom; and the study plan links
 to lichess practice resources matched to your weaknesses. The renderer also reads
 `games.json` for move-by-move replay — if it is absent, boards fall back to a
-single static diagram.
+single static diagram. Opening boards stop at the move that defines each opening
+(matched against a bundled openings book, `openings_book.txt`, derived from
+lichess chess-openings, CC0) and show the engine score in pawns from White's
+point of view at each step.
 
 ### 6. Write the report
 

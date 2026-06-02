@@ -165,7 +165,10 @@ def classify(cpl: int) -> str | None:
 
 
 def analyze_game(
-    engine: chess.engine.SimpleEngine, game_meta: dict, depth: int, book: set | None = None
+    engine: chess.engine.SimpleEngine,
+    game_meta: dict,
+    depth: int,
+    book: set | None = None,
 ) -> dict | None:
     """Analyze one game; return per-move detail for the player's moves."""
     pgn_game = chess.pgn.read_game(io.StringIO(game_meta["pgn"]))

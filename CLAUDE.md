@@ -55,7 +55,11 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
    presentation. It also reads `games.json` (full PGN) to build click-through board steppers for
    openings and blunders (one small inline vanilla-JS stepper, still no CDN/library),
    shows an eval-swing sparkline per blunder, and renders a glossary plus tailored
-   lichess practice links.
+   lichess practice links. The analyzer also emits a per-game `opening_line` (san +
+   White-POV eval) truncated at the deepest position found in the vendored
+   `openings_book.txt` (lichess chess-openings, CC0); the report's opening steppers
+   render that line with a CP score per move and fall back to the full-PGN stepper
+   when `opening_line` is absent.
 
 ### Key invariants
 

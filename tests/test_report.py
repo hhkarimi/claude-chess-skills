@@ -682,16 +682,30 @@ def test_opening_frames_start_plus_moves_with_cp_captions():
 def test_section_openings_uses_opening_line_with_cp():
     agg = {
         "opening_performance": [
-            {"opening": "Scotch Game", "color": "white", "games": 2,
-             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+            {
+                "opening": "Scotch Game",
+                "color": "white",
+                "games": 2,
+                "win": 2,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 30.0,
+            },
         ]
     }
-    games = [{"opening": "Scotch Game", "my_color": "white", "url": "u1",
-              "opening_line": [
-                  {"ply": 1, "san": "e4", "eval": 20},
-                  {"ply": 2, "san": "e5", "eval": 15},
-                  {"ply": 3, "san": "Nf3", "eval": 25}],
-              "moves": []}]
+    games = [
+        {
+            "opening": "Scotch Game",
+            "my_color": "white",
+            "url": "u1",
+            "opening_line": [
+                {"ply": 1, "san": "e4", "eval": 20},
+                {"ply": 2, "san": "e5", "eval": 15},
+                {"ply": 3, "san": "Nf3", "eval": 25},
+            ],
+            "moves": [],
+        }
+    ]
     out = rr.section_openings(agg, games)
     assert 'class="player' in out
     assert "+0.2" in out
@@ -701,12 +715,56 @@ def test_section_openings_uses_opening_line_with_cp():
 def test_section_openings_falls_back_without_opening_line():
     agg = {
         "opening_performance": [
-            {"opening": "Scotch Game", "color": "white", "games": 2,
-             "win": 2, "loss": 0, "draw": 0, "avg_opening_cpl": 30.0},
+            {
+                "opening": "Scotch Game",
+                "color": "white",
+                "games": 2,
+                "win": 2,
+                "loss": 0,
+                "draw": 0,
+                "avg_opening_cpl": 30.0,
+            },
         ]
     }
-    games = [{"opening": "Scotch Game", "my_color": "white", "url": "u1",
-              "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}]}]
+    games = [
+        {
+            "opening": "Scotch Game",
+            "my_color": "white",
+            "url": "u1",
+            "moves": [{"phase": "opening", "fen_before": chess.STARTING_FEN}],
+        }
+    ]
     out = rr.section_openings(agg, games)
     assert "<svg" in out
     assert "+0." not in out
+
+
+def test_build_html_opening_stepper_shows_cp_when_opening_line_present():
+    agg = _min_agg()
+    agg["opening_performance"] = [
+        {
+            "opening": "Scotch Game",
+            "color": "white",
+            "games": 2,
+            "win": 2,
+            "loss": 0,
+            "draw": 0,
+            "avg_opening_cpl": 30.0,
+        },
+    ]
+    games = [
+        {
+            "opening": "Scotch Game",
+            "my_color": "white",
+            "url": "u1",
+            "opening_line": [
+                {"ply": 1, "san": "e4", "eval": 20},
+                {"ply": 2, "san": "e5", "eval": 15},
+            ],
+            "moves": [],
+        }
+    ]
+    out = rr.build_html(agg, games)
+    assert "+0.2" in out
+    assert "White's point of view" in out
+    assert out.count("function chessStep") == 1
