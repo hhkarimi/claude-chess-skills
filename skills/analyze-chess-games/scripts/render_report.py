@@ -14,11 +14,13 @@ Usage:
 
 import argparse
 import html
+import io
 import json
 import re
 from pathlib import Path
 
 import chess
+import chess.pgn
 import chess.svg
 
 DEFAULT_DIR = "chess-analysis"
@@ -368,6 +370,76 @@ def board_player(frames: list, *, orient: str = "white", size: int = 240) -> str
         f'<div class="player board" id="{wid}" data-idx="0">'
         f'<div class="frames">{"".join(divs)}</div>{controls}</div>'
     )
+
+
+def game_frames(pgn: str, *, start_ply: int, end_ply: int) -> list:
+    """Replay PGN and return [(fen, caption)] for plies in [start_ply, end_ply].
+
+    Caption is the move in '<num>. <san>' (white) or '<num>...<san>' (black) form.
+    When start_ply == 0, frame 0 is the initial position captioned 'start'.
+    """
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        return []
+    board = game.board()
+    frames = []
+    if start_ply == 0:
+        frames.append((board.fen(), "start"))
+    ply = 0
+    for move in game.mainline_moves():
+        ply += 1
+        san = board.san(move)
+        num = board.fullmove_number
+        sep = ". " if board.turn == chess.WHITE else "..."
+        board.push(move)
+        if start_ply <= ply <= end_ply:
+            frames.append((board.fen(), f"{num}{sep}{san}"))
+    return frames
+
+
+def _position_key(fen: str) -> str:
+    """Piece placement + side + castling + en passant (FEN minus move counters)."""
+    return " ".join(fen.split()[:4])
+
+
+def _opening_end_ply(pgn: str, target_fen: str | None, cap: int = 20) -> int:
+    """Ply at which the PGN first reaches target_fen (position-only), else cap."""
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        return cap
+    board = game.board()
+    target = _position_key(target_fen) if target_fen else None
+    ply = 0
+    for move in game.mainline_moves():
+        ply += 1
+        board.push(move)
+        if target is not None and _position_key(board.fen()) == target:
+            return ply
+        if ply >= cap:
+            break
+    return min(ply, cap)
+
+
+def _blunder_ply(pgn: str, move_no: int, color: str, san: str) -> int | None:
+    """1-based ply of the move matching fullmove number + side + SAN, else None."""
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    if game is None:
+        return None
+    board = game.board()
+    want_white = color == "white"
+    ply = 0
+    for move in game.mainline_moves():
+        ply += 1
+        played = board.san(move)
+        match = (
+            board.fullmove_number == move_no
+            and (board.turn == chess.WHITE) == want_white
+            and played == san
+        )
+        board.push(move)
+        if match:
+            return ply
+    return None
 
 
 def _find_opening_game(games: list, opening: str, color: str) -> dict | None:

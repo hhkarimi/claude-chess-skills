@@ -397,3 +397,34 @@ def test_board_player_unique_ids_across_calls():
 
 def test_board_player_empty_is_blank():
     assert rr.board_player([]) == ""
+
+
+_PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *"
+
+
+def test_game_frames_opening_range_has_start_plus_moves():
+    frames = rr.game_frames(_PGN, start_ply=0, end_ply=3)
+    caps = [c for _, c in frames]
+    assert caps == ["start", "1. e4", "1...e5", "2. Nf3"]
+
+
+def test_game_frames_blunder_range_skips_start():
+    frames = rr.game_frames(_PGN, start_ply=1, end_ply=6)
+    caps = [c for _, c in frames]
+    assert caps[0] == "1. e4" and "start" not in caps
+    assert len(frames) == 6
+
+
+def test_opening_end_ply_matches_position():
+    # position after 1. e4 e5 2. Nf3 (before 2...Nc6)
+    fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2"
+    assert rr._opening_end_ply(_PGN, fen) == 3
+
+
+def test_opening_end_ply_falls_back_to_cap_when_unmatched():
+    assert rr._opening_end_ply(_PGN, None, cap=20) == 6  # whole short game, < cap
+
+
+def test_blunder_ply_locates_move():
+    assert rr._blunder_ply(_PGN, 3, "white", "Bb5") == 5
+    assert rr._blunder_ply(_PGN, 3, "white", "Qh5") is None
