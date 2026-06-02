@@ -132,3 +132,44 @@ def test_build_aggregate_opening_needs_two_games():
     per_game = [_game("white", "win", "Rare Line", [_move(10, "opening")])]
     agg = az.build_aggregate(per_game)
     assert agg["opening_performance"] == []
+
+
+def test_load_book_parses_epds_and_skips_comments(tmp_path):
+    f = tmp_path / "book.txt"
+    f.write_text(
+        "# a comment\n"
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -\n"
+        "\n"
+        "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -\n"
+    )
+    book = az.load_book(f)
+    assert isinstance(book, set)
+    assert len(book) == 2
+    assert "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -" in book
+
+
+def test_load_book_missing_file_is_empty_set(tmp_path):
+    assert az.load_book(tmp_path / "nope.txt") == set()
+
+
+def test_opening_line_truncates_at_deepest_in_book_ply():
+    book = {"EPD_A", "EPD_B"}  # plies 1 and 2 in book, ply 3 out
+    records = [
+        ("e4", "EPD_A", 20),
+        ("e5", "EPD_B", 10),
+        ("Qh5", "EPD_OUT", -300),
+    ]
+    line = az.opening_line(records, book)
+    assert [e["san"] for e in line] == ["e4", "e5"]
+    assert [e["ply"] for e in line] == [1, 2]
+    assert line[0]["eval"] == 20
+
+
+def test_opening_line_empty_when_no_book_match():
+    assert az.opening_line([("a3", "EPD_X", 0)], {"EPD_Y"}) == []
+
+
+def test_opening_line_clamps_eval():
+    big = az.EVAL_CAP + 5000
+    line = az.opening_line([("e4", "EPD_A", big)], {"EPD_A"})
+    assert line[0]["eval"] == az.EVAL_CAP

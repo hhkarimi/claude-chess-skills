@@ -45,6 +45,22 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
    chess.com game links from `top_blunders`** — they're the user's payoff: a tip
    they can't replay is half a tip.
 
+4. **`render_report.py`** — an optional, additive renderer (PEP 723 dep:
+   `python-chess` for `chess.svg` board diagrams) that turns `aggregate.json` +
+   `analysis.json` into a single self-contained `report.html`: inline CSS,
+   hand-rolled inline SVG charts, per-opening board figures, a blunder-origin
+   chart with per-blunder eval-swing sparklines, and a data-driven study plan (with an optional
+   `--tips` Markdown slot for Claude-authored coaching). `render_charts.py` stays
+   stdlib-only; the HTML renderer is the only place `python-chess` is needed for
+   presentation. It also reads `games.json` (full PGN) to build click-through board steppers for
+   openings and blunders (one small inline vanilla-JS stepper, still no CDN/library),
+   shows an eval-swing sparkline per blunder, and renders a glossary plus tailored
+   lichess practice links. The analyzer also emits a per-game `opening_line` (san +
+   White-POV eval) truncated at the deepest position found in the vendored
+   `openings_book.txt` (lichess chess-openings, CC0); the report's opening steppers
+   render that line with a CP score per move and fall back to the full-PGN stepper
+   when `opening_line` is absent.
+
 ### Key invariants
 
 - **CPL math**: evals are clamped to ±`EVAL_CAP` (mate included) so one
@@ -64,6 +80,7 @@ One skill, a two-stage pipeline plus a report you (Claude) write:
 cd skills/analyze-chess-games/scripts
 uv run fetch_games.py <username> --count 100    # fetch
 uv run analyze_games.py --depth 12              # analyze
+uv run render_report.py --in ./chess-analysis   # self-contained HTML report
 
 # from repo root — same checks CI runs
 uvx ruff check .
@@ -79,11 +96,32 @@ Conventional Commits and opens a `chore(main): release vX.Y.Z` PR. Merging it
 tags and releases. `.claude-plugin/plugin.json` and `.release-please-manifest.json`
 versions are bumped automatically — keep them in sync (release-please does this).
 
+## Sample output
+
+`docs/sample-report.html` is a committed example of the HTML report, generated
+from a real ~900-rated public chess.com account with `render_report.py` run
+**without** `--tips` (so it is the deterministic script output, no Claude-authored
+coaching). It contains no usernames — only public game-ID links.
+
+**Keep it current:** any PR that changes the report's output (`render_report.py`,
+or the `analysis.json`/`aggregate.json` fields the report reads) MUST regenerate
+this file in the same PR, and confirm no username leaked into it. Regenerate with:
+
+```bash
+uv run skills/analyze-chess-games/scripts/fetch_games.py <~900-user> --out /tmp/sample
+uv run skills/analyze-chess-games/scripts/analyze_games.py --in /tmp/sample --depth 12
+uv run skills/analyze-chess-games/scripts/render_report.py --in /tmp/sample
+cp /tmp/sample/report.html docs/sample-report.html   # then grep it for any username
+```
+
 ## Things to NOT do
 
 - **Don't commit usernames or game data.** `.gitignore` excludes `games*.json`,
   `analysis*.json`, `aggregate*.json`, and `*.pgn`, but don't add them manually
-  and don't paste a real username into code, tests, or fixtures.
+  and don't paste a real username into code, tests, or fixtures. The one allowed
+  exception is `docs/sample-report.html` (see "Sample output"): it is anonymized
+  (no usernames — verify before committing) and links only to public chess.com
+  game IDs.
 - Don't bypass branch protection without a stated reason.
 - Don't put network calls in the analyzer or engine calls in the fetcher — keep
   the two stages cleanly separated so each is testable on its own.

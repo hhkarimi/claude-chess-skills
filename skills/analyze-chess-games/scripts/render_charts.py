@@ -10,7 +10,7 @@ includes this output near the top of the report, then writes the prioritized
 tips below it.
 
 Usage:
-    uv run render_charts.py [--in /tmp/chess]
+    uv run render_charts.py [--in ./chess-analysis]
 """
 
 import argparse
@@ -199,7 +199,7 @@ def build_report_charts(agg: dict) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--in", dest="in_dir", default="/tmp/chess", help="dir with aggregate.json"
+        "--in", dest="in_dir", default="chess-analysis", help="dir with aggregate.json"
     )
     args = ap.parse_args()
 

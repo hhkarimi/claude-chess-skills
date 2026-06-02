@@ -10,7 +10,7 @@ have the requested count (default 100). Output is a single games.json the analyz
 consumes.
 
 Usage:
-    uv run fetch_games.py <username> [--count 100] [--out /tmp/chess]
+    uv run fetch_games.py <username> [--count 100] [--out ./chess-analysis]
 
 The username is a CLI argument and is never stored on disk beyond the output
 files (which .gitignore excludes). Pass it fresh each run.
@@ -144,7 +144,9 @@ def main() -> None:
         "--count", type=int, default=100, help="number of recent games (default 100)"
     )
     ap.add_argument(
-        "--out", default="/tmp/chess", help="output directory (default /tmp/chess)"
+        "--out",
+        default="chess-analysis",
+        help="output directory (default ./chess-analysis)",
     )
     args = ap.parse_args()
 

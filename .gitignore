@@ -4,9 +4,13 @@ __pycache__/
 .uv/
 .DS_Store
 /tmp/
+chess-analysis/
 games*.json
 analysis*.json
 aggregate*.json
 *.pgn
 !tests/fixtures/*.json
 !tests/fixtures/*.pgn
+
+# planning artifacts — kept local, out of PRs
+docs/superpowers/

@@ -25,7 +25,7 @@ Stockfish: if the binary is not on PATH, this script installs it with Homebrew
 --stockfish.
 
 Usage:
-    uv run analyze_games.py [--in /tmp/chess] [--depth 12] [--max-games N]
+    uv run analyze_games.py [--in ./chess-analysis] [--depth 12] [--max-games N]
                             [--stockfish PATH] [--no-install]
 """
 
@@ -93,6 +93,36 @@ def clamp_eval(cp: int) -> int:
     return max(-EVAL_CAP, min(EVAL_CAP, cp))
 
 
+def load_book(path: Path | str) -> set:
+    """Load the vendored opening-position EPD set; missing file -> empty set."""
+    p = Path(path)
+    if not p.exists():
+        return set()
+    return {
+        line.strip()
+        for line in p.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
+
+def opening_line(records: list, book: set) -> list:
+    """Truncate a game to its opening definition.
+
+    records: per-ply (san, epd_after, eval_white) in game order.
+    Returns [{ply, san, eval}] for plies 1..cutoff, where cutoff is the deepest
+    ply whose resulting position (epd_after) is a known book position. Empty when
+    no ply is in book. Evals are White-POV centipawns, clamped.
+    """
+    cutoff = 0
+    for i, (_san, epd, _ev) in enumerate(records, start=1):
+        if epd in book:
+            cutoff = i
+    return [
+        {"ply": i, "san": san, "eval": clamp_eval(ev)}
+        for i, (san, _epd, ev) in enumerate(records[:cutoff], start=1)
+    ]
+
+
 def phase_of(board: chess.Board) -> str:
     """Classify the position as opening / middlegame / endgame.
 
@@ -135,7 +165,10 @@ def classify(cpl: int) -> str | None:
 
 
 def analyze_game(
-    engine: chess.engine.SimpleEngine, game_meta: dict, depth: int
+    engine: chess.engine.SimpleEngine,
+    game_meta: dict,
+    depth: int,
+    book: set | None = None,
 ) -> dict | None:
     """Analyze one game; return per-move detail for the player's moves."""
     pgn_game = chess.pgn.read_game(io.StringIO(game_meta["pgn"]))
@@ -157,6 +190,7 @@ def analyze_game(
     # eval of the initial position from White's POV
     evals: list[int] = [_eval_white(engine, board, limit)]
     move_records = []  # (mover_color, san, fen_before, move_no, phase, clock)
+    opening_records: list = []
     for node in nodes:
         move = node.move
         mover = board.turn
@@ -167,6 +201,7 @@ def analyze_game(
         clk = node.clock()  # seconds remaining for mover after this move, or None
         board.push(move)
         evals.append(_eval_white(engine, board, limit))
+        opening_records.append((san, board.epd(), evals[-1]))
         move_records.append((mover, san, fen_before, move_no, ph, clk))
 
     moves_out = []
@@ -210,6 +245,7 @@ def analyze_game(
         "eco": headers.get("ECO"),
         "opening": _opening_name(headers),
         "moves": moves_out,
+        "opening_line": opening_line(opening_records, book or set()),
     }
 
 
@@ -355,7 +391,7 @@ def build_aggregate(per_game: list[dict], top_n: int = 12) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
-        "--in", dest="in_dir", default="/tmp/chess", help="dir with games.json"
+        "--in", dest="in_dir", default="chess-analysis", help="dir with games.json"
     )
     ap.add_argument(
         "--depth", type=int, default=12, help="Stockfish search depth (default 12)"
@@ -386,13 +422,14 @@ def main() -> None:
     except chess.engine.EngineError:
         pass
 
+    book = load_book(Path(__file__).parent / "openings_book.txt")
     per_game = []
     try:
         for n, g in enumerate(games, 1):
             print(
                 f"  [{n}/{len(games)}] analyzing game {g['index']}...", file=sys.stderr
             )
-            result = analyze_game(engine, g, args.depth)
+            result = analyze_game(engine, g, args.depth, book)
             if result:
                 per_game.append(result)
     finally:
