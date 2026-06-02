@@ -48,7 +48,10 @@ uv run fetch_games.py <your-username> --count 50
 # 2. Analyze every move with Stockfish
 uv run analyze_games.py --depth 12
 
-# 3. aggregate.json now holds the stats + top blunders the report is built from
+# 3. Render the inline ASCII chart dashboard (results, CPL by phase, openings, ...)
+uv run render_charts.py
+
+# aggregate.json also holds the top blunders the prioritized tips are built from
 ```
 
 Output lands in `/tmp/chess/` by default (`games.json`, `analysis.json`,

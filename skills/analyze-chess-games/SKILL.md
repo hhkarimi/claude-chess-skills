@@ -65,19 +65,26 @@ Writes:
 quick pass, raise it (`--depth 16`) for sharper blunder detection at more cost.
 Use `--max-games` to spot-check quickly.
 
-### 4. Write the report
+### 4. Render the charts
+
+Generate the visual dashboard from `aggregate.json`:
+
+```bash
+uv run scripts/render_charts.py [--in /tmp/chess]
+```
+
+This prints a Markdown block of inline ASCII charts (results by color, CPL by
+phase, move quality, wins-vs-losses CPL, mistakes by phase, time trouble, and an
+opening-performance table). Each chart is a fenced code block so the bar
+alignment renders correctly. Stdlib only — no dependencies.
+
+### 5. Write the report
 
 Read `aggregate.json` and produce **two parts**:
 
-**A. Stats dashboard** — markdown tables, no fluff:
-- Record summary: W/L/D overall and by color (from `results`, `by_color`).
-- Average centipawn loss (CPL) by phase (`avg_cpl_by_phase`) and the move-quality
-  counts (`move_quality`: blunders/mistakes/inaccuracies and per-game rates).
-- Wins vs losses CPL gap (`avg_cpl_by_result`).
-- Time trouble (`time_trouble`): moves in time trouble, blunders made there, and
-  losses that included a time-trouble blunder.
-- Opening performance table (`opening_performance`): opening, color, W/L/D, and
-  average opening-phase CPL — sorted by games played.
+**A. Stats dashboard** — paste the `render_charts.py` output verbatim (keep the
+fenced code blocks intact; they preserve the bar alignment). Do not redraw the
+charts by hand. Add a short table only if it conveys something the charts don't.
 
 **B. Prioritized tips** — the heart of the output. Rank the user's weaknesses by
 how much they actually cost, and for each give a concrete example and a fix:
